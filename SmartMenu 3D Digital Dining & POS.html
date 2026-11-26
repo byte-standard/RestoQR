@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartMenu 3D • Digital Dining & POS</title>
+  <meta name="theme-color" content="#e11d48" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Interactive 3D Model Viewer -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+  
+  <!-- Client-side QR Code Generator -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            brand: 'var(--accent)',
+            surface: '#151922',
+            surface2: '#1f2430',
+            canvas: '#0b0d12',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    :root {
+      --accent: #e11d48;
+    }
+    body {
+      background-color: #0b0d12;
+      color: #f8fafc;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Custom scrollbar hiding for horizontal category chips */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    model-viewer {
+      width: 100%;
+      height: 250px;
+      border-radius: 0.75rem;
+      background: radial-gradient(circle at center, #1e2536 0%, #090b10 100%);
+      --poster-color: transparent;
+    }
+    /* Printable QR sheet styling */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printableQrArea, #printableQrArea * {
+        visibility: visible;
+      }
+      #printableQrArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white !important;
+        color: black !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-28 selection:bg-rose-500 selection:text-white">
+
+  <!-- Top Sticky Navigation Header -->
+  <header class="sticky top-0 z-30 bg-[#0b0d12]/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
+    <div class="max-w-5xl mx-auto flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <h1 id="hdrTitle" class="text-base sm:text-lg font-bold tracking-tight truncate text-white">SmartMenu 3D</h1>
+        <p id="hdrSub" class="text-xs text-slate-400 truncate">Instant Table Dining</p>
+      </div>
+      <div id="hdrActions" class="flex items-center gap-2 shrink-0"></div>
+    </div>
+  </header>
+
+  <!-- Quick Mode Switcher Bar (Useful for testing & demoing all views directly) -->
+  <div class="bg-[#121620] border-b border-slate-800/60 px-4 py-2">
+    <div class="max-w-5xl mx-auto flex items-center justify-between gap-2 overflow-x-auto no-scrollbar text-xs">
+      <span class="text-slate-400 font-medium shrink-0">Quick Switch:</span>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button id="navCustomerBtn" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition">Customer Menu</button>
+        <button id="navStaffBtn" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition">Staff / Manager</button>
+        <button id="navSuperAdminBtn" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition">Super Admin</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Banner (Replaces native alert/confirm) -->
+  <div id="toastBanner" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 hidden max-w-sm w-[92%] bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between gap-3 transition-all">
+    <div class="flex items-center gap-2.5">
+      <span id="toastDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span>
+      <p id="toastText" class="text-sm font-medium"></p>
+    </div>
+    <button id="toastCloseBtn" class="text-slate-400 hover:text-white text-xs font-semibold px-2 py-1">OK</button>
+  </div>
+
+  <!-- Main Dynamic Application Container -->
+  <main id="app" class="max-w-5xl mx-auto px-4 pt-4">
+    <div class="bg-[#151922] border border-slate-800 rounded-2xl p-6 text-center">
+      <div class="inline-block w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+      <p class="text-sm text-slate-400">Connecting to SmartMenu Cloud...</p>
+    </div>
+  </main>
+
+  <!-- Floating Customer Cart Bar -->
+  <div id="cartBar" class="fixed bottom-0 inset-x-0 z-30 hidden bg-[#131722]/95 backdrop-blur-md border-t border-slate-800 px-4 py-3">
+    <div class="max-w-5xl mx-auto flex items-center justify-between gap-4">
+      <div>
+        <div id="cartSummary" class="text-sm sm:text-base font-bold text-white">0 items • ₹0</div>
+        <div class="text-xs text-slate-400">Tap to review & send order</div>
+      </div>
+      <button id="openCartBtn" class="px-5 py-2.5 rounded-xl font-semibold text-sm text-white shadow-lg transition active:scale-95" style="background: var(--accent);">
+        Review Order
+      </button>
+    </div>
+  </div>
+
+  <!-- Customer Cart Confirmation Bottom Sheet Modal -->
+  <div id="cartModal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-xs items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-[#151922] border border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-lg p-5 max-h-[88vh] overflow-y-auto shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div>
+          <h3 class="text-lg font-bold text-white">Confirm Table Order</h3>
+          <p id="modalTableSub" class="text-xs text-slate-400">Table 1</p>
+        </div>
+        <button id="closeCartBtn" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200">
+          Close
+        </button>
+      </div>
+
+      <div id="cartList" class="divide-y divide-slate-800/80 my-2"></div>
+
+      <div class="mt-4 space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Guest Name (Optional)</label>
+          <input id="guestName" type="text" placeholder="e.g., Kiran" class="w-full px-3.5 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Cooking Instructions (Optional)</label>
+          <textarea id="orderNote" rows="2" placeholder="Less spicy, extra chutney..." class="w-full px-3.5 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"></textarea>
+        </div>
+        <button id="submitOrderBtn" class="w-full py-3 rounded-xl font-bold text-sm text-white shadow-lg transition active:scale-[0.99]" style="background: var(--accent);">
+          Place Order Now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Staff Role Bottom Navigation Bar -->
+  <nav id="bottomNav" class="fixed bottom-0 inset-x-0 z-30 hidden bg-[#121620]/95 backdrop-blur-md border-t border-slate-800 px-2 py-2">
+    <div id="bottomNavInner" class="max-w-5xl mx-auto flex items-center justify-around gap-1"></div>
+  </nav>
+
+  <!-- Inline Self-Contained PWA Manifest & Service Worker -->
+  <script>
+    (function setupInlinePWA() {
+      try {
+        const manifest = {
+          name: "SmartMenu 3D Dining & POS",
+          short_name: "SmartMenu",
+          start_url: location.href,
+          display: "standalone",
+          background_color: "#0b0d12",
+          theme_color: "#e11d48",
+          icons: [
+            {
+              src: "https://cdn-icons-png.flaticon.com/512/3448/3448609.png",
+              sizes: "512x512",
+              type: "image/png"
+            }
+          ]
+        };
+        const mBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = URL.createObjectURL(mBlob);
+        document.head.appendChild(link);
+
+        if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+          const swCode = `
+            self.addEventListener('install', e => self.skipWaiting());
+            self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+            self.addEventListener('fetch', e => {
+              if (e.request.method !== 'GET') return;
+              e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+            });
+          `;
+          const swBlob = new Blob([swCode], { type: 'application/javascript' });
+          navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+        }
+      } catch (e) {
+        // Ignore sandboxed preview SW restrictions gracefully
+      }
+    })();
+  </script>
+
+  <!-- Application Logic & Firebase Realtime Sync -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import {
+      getFirestore, collection, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc,
+      onSnapshot, query, orderBy
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDvC0eAyXeDj8-Erj16jGV1hQSR5H0WsSw",
+      authDomain: "restoqr-b9d9c.firebaseapp.com",
+      projectId: "restoqr-b9d9c",
+      storageBucket: "restoqr-b9d9c.firebasestorage.app",
+      messagingSenderId: "467335839268",
+      appId: "1:467335839268:web:7d302fb5387181efcda2b1"
+    };
+
+    // Change this to your private Super Admin PIN before going live
+    const SUPER_ADMIN_PIN = '9999';
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // URL Parameter Routing
+    const params = new URLSearchParams(location.search);
+    let restId = (params.get('r') || 'demo-cafe').trim();
+    let tableNo = (params.get('t') || '1').trim();
+    let panelMode = (params.get('panel') || 'customer').trim(); // customer | staff | superadmin
+
+    // Application State
+    let restaurantData = null;
+    let menuItems = [];
+    let liveOrders = [];
+    let cart = {};
+    let selectedCat = 'All';
+    let vegOnly = false;
+    let heroIdx = 0;
+
+    // Staff & Admin State
+    let unlockedRole = sessionStorage.getItem(`role_${restId}`) || null; // manager | kitchen | waiter
+    let activeTab = 'queue';
+    let waiterSelectedTable = '1';
+    let lastKnownOrderCount = -1;
+    let pendingDeleteDishId = null;
+
+    // DOM References
+    const $app = document.getElementById('app');
+    const $hdrTitle = document.getElementById('hdrTitle');
+    const $hdrSub = document.getElementById('hdrSub');
+    const $hdrActions = document.getElementById('hdrActions');
+    const $bottomNav = document.getElementById('bottomNav');
+    const $bottomNavInner = document.getElementById('bottomNavInner');
+
+    // Non-blocking Toast Helper (Never uses alert/confirm)
+    let toastTimer = null;
+    function showToast(msg, type = 'success') {
+      const banner = document.getElementById('toastBanner');
+      const dot = document.getElementById('toastDot');
+      const text = document.getElementById('toastText');
+      text.textContent = msg;
+      dot.className = `w-2.5 h-2.5 rounded-full shrink-0 ${
+        type === 'error' ? 'bg-rose-500' : type === 'warn' ? 'bg-amber-400' : 'bg-emerald-400'
+      }`;
+      banner.classList.remove('hidden');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => banner.classList.add('hidden'), 3800);
+    }
+    document.getElementById('toastCloseBtn').onclick = () => document.getElementById('toastBanner').classList.add('hidden');
+
+    // Quick Mode Switchers
+    document.getElementById('navCustomerBtn').onclick = () => switchPanelMode('customer');
+    document.getElementById('navStaffBtn').onclick = () => switchPanelMode('staff');
+    document.getElementById('navSuperAdminBtn').onclick = () => switchPanelMode('superadmin');
+
+    function switchPanelMode(newMode) {
+      panelMode = newMode;
+      document.getElementById('cartBar').classList.add('hidden');
+      $bottomNav.classList.add('hidden');
+      $hdrActions.innerHTML = '';
+
+      if (panelMode === 'superadmin') {
+        renderSuperAdminGate();
+      } else if (panelMode === 'staff') {
+        if (!restaurantData) {
+          boot();
+        } else if (!unlockedRole) {
+          renderStaffPinGate();
+        } else {
+          renderStaffWorkspace();
+        }
+      } else {
+        if (!restaurantData) {
+          boot();
+        } else {
+          renderCustomerMenu();
+        }
+      }
+    }
+
+    function showError(err) {
+      $app.innerHTML = `
+        <div class="bg-[#151922] border border-rose-500/60 rounded-2xl p-5">
+          <h3 class="text-base font-bold text-rose-400">Connection / Setup Notice</h3>
+          <p class="text-sm text-slate-300 mt-1.5">${escapeHtml(err?.message || String(err))}</p>
+          <p class="text-xs text-slate-400 mt-2">Verify your Firebase Firestore Rules (<code class="text-slate-200">allow read, write: if true;</code>) and active internet connection.</p>
+        </div>
+      `;
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function setAccent(hex) {
+      if (hex) document.documentElement.style.setProperty('--accent', hex);
+    }
+
+    function playBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = 880;
+        osc.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.22);
+      } catch (e) {}
+    }
+
+    // Auto-seed demo-cafe on first launch so demo works out of the box
+    async function ensureDemoExists() {
+      if (restId !== 'demo-cafe') return;
+      const ref = doc(db, 'restaurants', 'demo-cafe');
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        await setDoc(ref, {
+          name: 'Royal Spice Cafe (Demo)',
+          accent_color: '#e11d48',
+          table_count: 10,
+          active: true,
+          manager_pin: '1111',
+          kitchen_pin: '2222',
+          waiter_pin: '3333',
+          google_review_url: 'https://google.com'
+        });
+        const sampleDishes = [
+          {
+            name: 'Signature Masala Burger',
+            category: 'Burgers',
+            price: 149,
+            veg: true,
+            bestseller: true,
+            in_stock: true,
+            photo_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500',
+            glb_url: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+          },
+          {
+            name: 'Hyderabadi Dum Biryani',
+            category: 'Main Course',
+            price: 220,
+            veg: false,
+            bestseller: false,
+            in_stock: true,
+            photo_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500',
+            glb_url: ''
+          },
+          {
+            name: 'Cold Coffee Frappe',
+            category: 'Beverages',
+            price: 99,
+            veg: true,
+            bestseller: false,
+            in_stock: true,
+            photo_url: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=500',
+            glb_url: ''
+          }
+        ];
+        for (const d of sampleDishes) {
+          await addDoc(collection(db, 'restaurants', 'demo-cafe', 'menu'), d);
+        }
+      }
+    }
+
+    // Bootstrap Application & Listeners
+    async function boot() {
+      try {
+        if (panelMode === 'superadmin') {
+          renderSuperAdminGate();
+          return;
+        }
+
+        await ensureDemoExists();
+
+        const restSnap = await getDoc(doc(db, 'restaurants', restId));
+        if (!restSnap.exists()) {
+          $app.innerHTML = `
+            <div class="bg-[#151922] border border-slate-800 rounded-2xl p-6 text-center">
+              <h3 class="text-lg font-bold text-white">Restaurant Not Found</h3>
+              <p class="text-sm text-slate-400 mt-1">Check the QR link or onboard <code class="text-rose-400">${escapeHtml(restId)}</code> in Super Admin.</p>
+            </div>
+          `;
+          return;
+        }
+        restaurantData = { id: restSnap.id, ...restSnap.data() };
+        setAccent(restaurantData.accent_color);
+
+        if (restaurantData.active === false && panelMode === 'customer') {
+          $hdrTitle.textContent = restaurantData.name;
+          $app.innerHTML = `
+            <div class="bg-[#151922] border border-slate-800 rounded-2xl p-6 text-center">
+              <h3 class="text-lg font-bold text-white">Menu Temporarily Unavailable</h3>
+              <p class="text-sm text-slate-400 mt-1">Please ask restaurant staff for assistance.</p>
+            </div>
+          `;
+          return;
+        }
+
+        // Realtime Menu Listener
+        onSnapshot(collection(db, 'restaurants', restId, 'menu'), (snap) => {
+          menuItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (panelMode === 'customer') renderCustomerMenu();
+          if (panelMode === 'staff' && unlockedRole) renderStaffWorkspace();
+        }, showError);
+
+        // Realtime Orders Listener
+        const qOrders = query(collection(db, 'restaurants', restId, 'orders'), orderBy('created_ms', 'desc'));
+        onSnapshot(qOrders, (snap) => {
+          const incoming = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (panelMode === 'staff' && unlockedRole && lastKnownOrderCount !== -1 && incoming.length > lastKnownOrderCount) {
+            playBeep();
+            showToast('New order arrived!', 'warn');
+          }
+          lastKnownOrderCount = incoming.length;
+          liveOrders = incoming;
+          if (panelMode === 'customer') renderCustomerMenu();
+          if (panelMode === 'staff' && unlockedRole) renderStaffWorkspace();
+        }, showError);
+
+        if (panelMode === 'staff') {
+          if (!unlockedRole) renderStaffPinGate();
+          else renderStaffWorkspace();
+        } else {
+          renderCustomerMenu();
+        }
+      } catch (err) {
+        showError(err);
+      }
+    }
+
+    // ================= 1. CUSTOMER 3D MENU =================
+    function renderCustomerMenu() {
+      $hdrTitle.textContent = restaurantData.name;
+      $hdrSub.textContent = '3D Interactive Menu';
+      $hdrActions.innerHTML = `
+        <span class="px-2.5 py-1 rounded-full bg-[#1f2430] border border-slate-700 text-xs font-semibold text-slate-200">Table ${escapeHtml(tableNo)}</span>
+        <button id="callWaiterBtn" class="px-3 py-1.5 rounded-xl bg-[#1f2430] hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white transition active:scale-95">
+          Call Waiter
+        </button>
+      `;
+      document.getElementById('callWaiterBtn').onclick = () => triggerServiceCall('Waiter Requested');
+
+      // Live Order Tracker Banner for current table
+      const activeTableOrders = liveOrders.filter(o => String(o.table_no) === String(tableNo) && o.status !== 'CLOSED');
+      const statusColors = {
+        NEW: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
+        PREPARING: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+        READY: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+        SERVED: 'bg-slate-500/20 text-slate-300 border-slate-500/40'
+      };
+
+      const trackerHtml = activeTableOrders.length ? `
+        <div class="bg-blue-950/40 border border-blue-500/40 rounded-2xl p-4 mb-5 shadow-lg">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
+              <strong class="text-sm font-bold text-white">Live Table ${escapeHtml(tableNo)} Order</strong>
+            </div>
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusColors[activeTableOrders[0].status] || statusColors.NEW}">
+              ${escapeHtml(activeTableOrders[0].status)}
+            </span>
+          </div>
+          <p class="text-xs text-slate-300 mt-1.5">
+            ${activeTableOrders[0].items.map(i => `${escapeHtml(i.name)} ×${i.qty}`).join(', ')} • <strong class="text-white">Total ₹${activeTableOrders[0].total}</strong>
+          </p>
+          ${restaurantData.google_review_url ? `
+            <a href="${escapeHtml(restaurantData.google_review_url)}" target="_blank" rel="noopener" class="inline-block mt-3 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition">
+              Rate Us on Google ★
+            </a>` : ''}
+        </div>
+      ` : '';
+
+      // 3D Signature Hero Dish Showcase
+      const availableMenu = menuItems.filter(m => m.in_stock !== false);
+      const heroes = availableMenu.filter(m => m.bestseller && m.glb_url);
+      if (heroIdx >= heroes.length) heroIdx = 0;
+      const hero = heroes[heroIdx];
+
+      const heroHtml = hero ? `
+        <section class="mb-6">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-bold text-slate-200 tracking-wide uppercase">3D Signature Showcase</h2>
+            <span class="text-[11px] text-slate-400">Drag to rotate • Pinch to zoom</span>
+          </div>
+          <div class="bg-gradient-to-br from-[#1b202c] to-[#11141b] border border-slate-800 rounded-2xl p-3.5 shadow-xl">
+            <model-viewer
+              src="${escapeHtml(hero.glb_url)}"
+              alt="${escapeHtml(hero.name)}"
+              camera-controls
+              auto-rotate
+              shadow-intensity="1"
+              ar
+            ></model-viewer>
+            <div class="flex items-center justify-between gap-3 mt-3 pt-2 border-t border-slate-800/80">
+              <div>
+                <div class="font-bold text-sm sm:text-base text-white">${escapeHtml(hero.name)} • ₹${hero.price}</div>
+                <div class="text-xs text-slate-400">${escapeHtml(hero.category)}</div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                ${heroes.length > 1 ? `<button id="nextHeroBtn" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white transition">Next 3D</button>` : ''}
+                <button data-add="${hero.id}" class="px-4 py-2 rounded-xl text-xs font-bold text-white shadow transition active:scale-95" style="background: var(--accent);">+ Add</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      ` : '';
+
+      // Categories & Veg Filter
+      const cats = ['All', ...new Set(availableMenu.map(i => i.category).filter(Boolean))];
+      const filtered = availableMenu.filter(i => (selectedCat === 'All' || i.category === selectedCat) && (!vegOnly || i.veg));
+
+      $app.innerHTML = `
+        ${trackerHtml}
+        ${heroHtml}
+        <section>
+          <div class="flex items-center justify-between mb-2.5">
+            <h2 class="text-sm font-bold text-slate-200 tracking-wide uppercase">Explore Menu</h2>
+            <span class="text-xs text-slate-400">${filtered.length} dishes</span>
+          </div>
+          
+          <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
+            <button id="vegChip" class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition ${
+              vegOnly ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-[#151922] border-slate-800 text-slate-300 hover:border-slate-700'
+            }">
+              ● Veg Only
+            </button>
+            ${cats.map(c => `
+              <button data-cat="${escapeHtml(c)}" class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition ${
+                selectedCat === c ? 'text-white border-transparent' : 'bg-[#151922] border-slate-800 text-slate-300 hover:border-slate-700'
+              }" style="${selectedCat === c ? 'background: var(--accent);' : ''}">
+                ${escapeHtml(c)}
+              </button>
+            `).join('')}
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-3">
+            ${filtered.map(item => {
+              const q = cart[item.id]?.qty || 0;
+              return `
+                <div class="bg-[#151922] border border-slate-800/90 rounded-2xl p-3.5 flex flex-col justify-between gap-3 hover:border-slate-700 transition">
+                  <div>
+                    ${item.photo_url ? `
+                      <img
+                        src="${escapeHtml(item.photo_url)}"
+                        alt="${escapeHtml(item.name)}"
+                        loading="lazy"
+                        onerror="this.src='https://placehold.co/400x260/1f2430/94a3b8?text=${encodeURIComponent(item.name)}'"
+                        class="w-full h-36 object-cover rounded-xl bg-[#1f2430] mb-3"
+                      />` : ''}
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="inline-flex items-center gap-1.5 text-[11px] font-medium ${item.veg ? 'text-emerald-400' : 'text-rose-400'}">
+                        <span class="w-2.5 h-2.5 rounded-sm border ${item.veg ? 'border-emerald-400 bg-emerald-500/30' : 'border-rose-400 bg-rose-500/30'} inline-block"></span>
+                        ${item.veg ? 'Veg' : 'Non-Veg'}
+                      </span>
+                      <span class="text-[11px] text-slate-400">${escapeHtml(item.category)}</span>
+                    </div>
+                    <h3 class="font-bold text-sm sm:text-base text-white mt-1">${escapeHtml(item.name)}</h3>
+                  </div>
+
+                  <div class="flex items-center justify-between pt-2 border-t border-slate-800/70">
+                    <span class="font-bold text-base text-white">₹${item.price}</span>
+                    ${q === 0
+                      ? `<button data-add="${item.id}" class="px-4 py-1.5 rounded-xl text-xs font-bold text-white shadow transition active:scale-95" style="background: var(--accent);">+ Add</button>`
+                      : `<div class="flex items-center gap-2 bg-[#1f2430] border border-slate-700 rounded-xl p-1">
+                           <button data-dec="${item.id}" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-sm text-white">-</button>
+                           <span class="text-xs font-bold px-1.5 text-white">${q}</span>
+                           <button data-add="${item.id}" class="w-7 h-7 rounded-lg font-bold text-sm text-white" style="background: var(--accent);">+</button>
+                         </div>`
+                    }
+                  </div>
+                </div>
+              `;
+            }).join('') || '<p class="text-sm text-slate-400 col-span-full py-6 text-center">No dishes match your current filter.</p>'}
+          </div>
+        </section>
+      `;
+
+      if (document.getElementById('nextHeroBtn')) {
+        document.getElementById('nextHeroBtn').onclick = () => { heroIdx = (heroIdx + 1) % heroes.length; renderCustomerMenu(); };
+      }
+      document.getElementById('vegChip').onclick = () => { vegOnly = !vegOnly; renderCustomerMenu(); };
+      document.querySelectorAll('[data-cat]').forEach(el => el.onclick = () => { selectedCat = el.dataset.cat; renderCustomerMenu(); });
+      document.querySelectorAll('[data-add]').forEach(el => el.onclick = () => updateCart(el.dataset.add, 1));
+      document.querySelectorAll('[data-dec]').forEach(el => el.onclick = () => updateCart(el.dataset.dec, -1));
+      refreshCartBar();
+    }
+
+    function updateCart(id, delta) {
+      const item = menuItems.find(m => m.id === id);
+      if (!item) return;
+      if (!cart[id]) cart[id] = { ...item, qty: 0 };
+      cart[id].qty += delta;
+      if (cart[id].qty <= 0) delete cart[id];
+      renderCustomerMenu();
+      if (!document.getElementById('cartModal').classList.contains('hidden')) renderCartModal();
+    }
+
+    function refreshCartBar() {
+      const list = Object.values(cart);
+      const count = list.reduce((s, i) => s + i.qty, 0);
+      const total = list.reduce((s, i) => s + i.qty * i.price, 0);
+      const bar = document.getElementById('cartBar');
+      if (count > 0 && panelMode === 'customer') {
+        bar.classList.remove('hidden');
+        document.getElementById('cartSummary').textContent = `${count} item${count > 1 ? 's' : ''} • ₹${total}`;
+      } else {
+        bar.classList.add('hidden');
+      }
+    }
+
+    function renderCartModal() {
+      document.getElementById('modalTableSub').textContent = `Table ${tableNo} • ${restaurantData.name}`;
+      const list = Object.values(cart);
+      const total = list.reduce((s, i) => s + i.qty * i.price, 0);
+      document.getElementById('cartList').innerHTML = list.map(i => `
+        <div class="flex items-center justify-between py-3">
+          <div>
+            <div class="font-semibold text-sm text-white">${escapeHtml(i.name)}</div>
+            <div class="text-xs text-slate-400">₹${i.price} × ${i.qty} = ₹${i.price * i.qty}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button data-mdec="${i.id}" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 font-bold text-white">-</button>
+            <span class="text-sm font-bold w-5 text-center">${i.qty}</span>
+            <button data-madd="${i.id}" class="w-8 h-8 rounded-xl font-bold text-white" style="background: var(--accent);">+</button>
+          </div>
+        </div>
+      `).join('') + `
+        <div class="flex items-center justify-between pt-3 font-bold text-base text-white">
+          <span>Grand Total</span>
+          <span>₹${total}</span>
+        </div>
+      `;
+
+      document.querySelectorAll('[data-madd]').forEach(el => el.onclick = () => updateCart(el.dataset.madd, 1));
+      document.querySelectorAll('[data-mdec]').forEach(el => el.onclick = () => updateCart(el.dataset.mdec, -1));
+    }
+
+    document.getElementById('openCartBtn').onclick = () => {
+      renderCartModal();
+      const modal = document.getElementById('cartModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+    document.getElementById('closeCartBtn').onclick = () => {
+      const modal = document.getElementById('cartModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    document.getElementById('submitOrderBtn').onclick = async () => {
+      const items = Object.values(cart);
+      if (!items.length) return;
+      const total = items.reduce((s, i) => s + i.qty * i.price, 0);
+      const btn = document.getElementById('submitOrderBtn');
+      btn.disabled = true;
+      btn.textContent = 'Sending to Kitchen...';
+
+      try {
+        await addDoc(collection(db, 'restaurants', restId, 'orders'), {
+          table_no: String(tableNo),
+          customer_name: document.getElementById('guestName').value.trim() || 'Guest',
+          note: document.getElementById('orderNote').value.trim(),
+          items: items.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
+          total,
+          status: 'NEW',
+          created_ms: Date.now(),
+          created_at: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+        });
+
+        cart = {};
+        document.getElementById('orderNote').value = '';
+        const modal = document.getElementById('cartModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        showToast('Order sent straight to the kitchen!', 'success');
+        renderCustomerMenu();
+      } catch (e) {
+        showToast('Failed to send order. Check connection.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Place Order Now';
+      }
+    };
+
+    async function triggerServiceCall(label) {
+      try {
+        await addDoc(collection(db, 'restaurants', restId, 'orders'), {
+          table_no: String(tableNo),
+          customer_name: 'Service Alert',
+          note: label,
+          items: [{ name: `🔔 ${label}`, qty: 1, price: 0 }],
+          total: 0,
+          status: 'NEW',
+          created_ms: Date.now(),
+          created_at: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+        });
+        showToast('Waiter notified for Table ' + tableNo + '!', 'success');
+      } catch (e) {
+        showToast('Could not notify waiter.', 'error');
+      }
+    }
+
+    // ================= 2. ROLE-LOCKED STAFF & MANAGER PANEL =================
+    function renderStaffPinGate() {
+      $hdrTitle.textContent = restaurantData.name;
+      $hdrSub.textContent = 'Staff & Manager Login';
+      $bottomNav.classList.add('hidden');
+      $app.innerHTML = `
+        <div class="max-w-md mx-auto mt-6 bg-[#151922] border border-slate-800 rounded-3xl p-6 shadow-xl">
+          <h3 class="text-lg font-bold text-white">Enter Staff Role PIN</h3>
+          <p class="text-xs text-slate-400 mt-1 mb-4">
+            Demo PINs: Manager <strong class="text-slate-200">1111</strong> • Kitchen <strong class="text-slate-200">2222</strong> • Waiter <strong class="text-slate-200">3333</strong>
+          </p>
+          <input id="staffPinInput" type="password" inputmode="numeric" placeholder="4-digit PIN" class="w-full px-4 py-3 rounded-xl bg-[#1f2430] border border-slate-700 text-base text-white tracking-widest mb-4 focus:outline-none focus:border-rose-500" />
+          <button id="unlockStaffBtn" class="w-full py-3 rounded-xl font-bold text-sm text-white shadow-lg transition" style="background: var(--accent);">
+            Unlock Panel
+          </button>
+        </div>
+      `;
+      const unlockFn = () => {
+        const pin = document.getElementById('staffPinInput').value.trim();
+        if (pin === String(restaurantData.manager_pin)) unlockedRole = 'manager';
+        else if (pin === String(restaurantData.kitchen_pin)) unlockedRole = 'kitchen';
+        else if (pin === String(restaurantData.waiter_pin)) unlockedRole = 'waiter';
+        else return showToast('Invalid Role PIN', 'error');
+
+        sessionStorage.setItem(`role_${restId}`, unlockedRole);
+        activeTab = unlockedRole === 'waiter' ? 'tables' : 'queue';
+        showToast(`Unlocked ${unlockedRole.toUpperCase()} panel`, 'success');
+        renderStaffWorkspace();
+      };
+      document.getElementById('unlockStaffBtn').onclick = unlockFn;
+      document.getElementById('staffPinInput').onkeydown = (e) => { if (e.key === 'Enter') unlockFn(); };
+    }
+
+    function renderStaffWorkspace() {
+      $hdrTitle.textContent = restaurantData.name;
+      $hdrSub.textContent = `Role: ${unlockedRole.toUpperCase()}`;
+      $hdrActions.innerHTML = `
+        <button id="logoutRoleBtn" class="px-3 py-1.5 rounded-xl bg-[#1f2430] hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white">
+          Switch Role
+        </button>
+      `;
+      document.getElementById('logoutRoleBtn').onclick = () => {
+        sessionStorage.removeItem(`role_${restId}`);
+        unlockedRole = null;
+        renderStaffPinGate();
+      };
+
+      const roleTabs = {
+        kitchen: [
+          { id: 'queue', label: 'Kitchen Queue' },
+          { id: 'history', label: 'Completed' }
+        ],
+        waiter: [
+          { id: 'tables', label: 'Tables & Ready' },
+          { id: 'take_order', label: 'Take Order' }
+        ],
+        manager: [
+          { id: 'queue', label: 'Live Counter' },
+          { id: 'tables', label: 'Tables' },
+          { id: 'menu_mgr', label: 'Menu & Stock' },
+          { id: 'qr_mgr', label: 'Table QRs' }
+        ]
+      };
+
+      const tabs = roleTabs[unlockedRole] || roleTabs.kitchen;
+      if (!tabs.some(t => t.id === activeTab)) activeTab = tabs[0].id;
+
+      $bottomNav.classList.remove('hidden');
+      $bottomNavInner.innerHTML = tabs.map(t => `
+        <button data-tab="${t.id}" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition ${
+          activeTab === t.id ? 'bg-[#1f2430] text-white border border-slate-700' : 'text-slate-400 hover:text-slate-200'
+        }">
+          ${t.label}
+        </button>
+      `).join('');
+      $bottomNavInner.querySelectorAll('[data-tab]').forEach(btn => {
+        btn.onclick = () => { activeTab = btn.dataset.tab; renderStaffWorkspace(); };
+      });
+
+      if (activeTab === 'queue') renderLiveQueue(unlockedRole === 'kitchen');
+      if (activeTab === 'history') renderOrderHistory();
+      if (activeTab === 'tables') renderTableFloor();
+      if (activeTab === 'take_order') renderWaiterOrderPad();
+      if (activeTab === 'menu_mgr') renderMenuManager();
+      if (activeTab === 'qr_mgr') renderRestaurantQRTab();
+    }
+
+    function renderLiveQueue(hidePrices) {
+      const openOrders = liveOrders.filter(o => o.status !== 'CLOSED' && o.status !== 'SERVED');
+      const statusBadge = {
+        NEW: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
+        PREPARING: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+        READY: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+      };
+
+      $app.innerHTML = `
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wide">Active Orders (${openOrders.length})</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          ${openOrders.map(o => `
+            <div class="bg-[#151922] border border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-3">
+              <div>
+                <div class="flex items-center justify-between gap-2">
+                  <strong class="text-base font-bold text-white">Table ${escapeHtml(o.table_no)} ${hidePrices ? '' : `• ₹${o.total}`}</strong>
+                  <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusBadge[o.status] || statusBadge.NEW}">${escapeHtml(o.status)}</span>
+                </div>
+                <div class="text-xs text-slate-400 mt-1">${escapeHtml(o.created_at || '')} • ${escapeHtml(o.customer_name || 'Guest')}</div>
+                <div class="mt-3 space-y-1 text-sm text-slate-100 bg-[#1f2430]/70 p-3 rounded-xl">
+                  ${o.items.map(i => `<div><strong class="text-rose-400">${i.qty}×</strong> ${escapeHtml(i.name)}</div>`).join('')}
+                </div>
+                ${o.note ? `<div class="mt-2 text-xs font-medium text-amber-300 bg-amber-950/40 border border-amber-500/30 px-3 py-1.5 rounded-lg">Note: ${escapeHtml(o.note)}</div>` : ''}
+              </div>
+              <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-800/80">
+                ${o.status === 'NEW' ? `<button data-st="PREPARING" data-oid="${o.id}" class="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-xs font-bold text-white">Start Cooking</button>` : ''}
+                ${o.status !== 'READY' ? `<button data-st="READY" data-oid="${o.id}" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white">Mark Ready</button>` : ''}
+                ${!hidePrices ? `<button data-st="CLOSED" data-oid="${o.id}" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200">Settle & Close</button>` : ''}
+              </div>
+            </div>
+          `).join('') || '<p class="text-sm text-slate-400 col-span-full py-8 text-center">No active orders in queue right now.</p>'}
+        </div>
+      `;
+      $app.querySelectorAll('[data-oid]').forEach(b => {
+        b.onclick = () => updateDoc(doc(db, 'restaurants', restId, 'orders', b.dataset.oid), { status: b.dataset.st });
+      });
+    }
+
+    function renderOrderHistory() {
+      const done = liveOrders.filter(o => o.status === 'READY' || o.status === 'SERVED' || o.status === 'CLOSED').slice(0, 25);
+      $app.innerHTML = `
+        <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wide mb-3">Recent Completed Orders</h2>
+        <div class="space-y-2.5">
+          ${done.map(o => `
+            <div class="bg-[#151922] border border-slate-800 rounded-2xl p-3.5">
+              <div class="flex items-center justify-between">
+                <strong class="text-sm font-bold text-white">Table ${escapeHtml(o.table_no)}</strong>
+                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300">${escapeHtml(o.status)}</span>
+              </div>
+              <div class="text-xs text-slate-400 mt-1">${o.items.map(i => `${i.qty}× ${escapeHtml(i.name)}`).join(', ')}</div>
+            </div>
+          `).join('') || '<p class="text-sm text-slate-400 py-6 text-center">No completed history yet.</p>'}
+        </div>
+      `;
+    }
+
+    function renderTableFloor() {
+      const count = Number(restaurantData.table_count || 10);
+      let tiles = '';
+      for (let t = 1; t <= count; t++) {
+        const tOrders = liveOrders.filter(o => String(o.table_no) === String(t) && o.status !== 'CLOSED');
+        const hasReady = tOrders.some(o => o.status === 'READY');
+        const styleCls = hasReady
+          ? 'border-emerald-500 bg-emerald-950/40'
+          : (tOrders.length ? 'border-amber-500 bg-amber-950/30' : 'border-slate-800 bg-[#151922] hover:border-slate-700');
+        const label = hasReady ? 'FOOD READY' : (tOrders.length ? `${tOrders.length} Active` : 'Free');
+        const labelColor = hasReady ? 'text-emerald-400 font-bold' : (tOrders.length ? 'text-amber-300 font-semibold' : 'text-slate-400');
+
+        tiles += `
+          <div data-tbl="${t}" class="border rounded-2xl p-4 text-center cursor-pointer transition active:scale-95 ${styleCls}">
+            <div class="font-bold text-base text-white">Table ${t}</div>
+            <div class="text-xs mt-1 ${labelColor}">${label}</div>
+          </div>
+        `;
+      }
+      $app.innerHTML = `
+        <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wide mb-3">Floor Overview (Tap Table to Take Order)</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">${tiles}</div>
+      `;
+      $app.querySelectorAll('[data-tbl]').forEach(el => {
+        el.onclick = () => {
+          waiterSelectedTable = el.dataset.tbl;
+          if (unlockedRole === 'waiter') {
+            activeTab = 'take_order';
+            renderStaffWorkspace();
+          } else {
+            showToast(`Selected Table ${waiterSelectedTable}`, 'success');
+          }
+        };
+      });
+    }
+
+    function renderWaiterOrderPad() {
+      const available = menuItems.filter(m => m.in_stock !== false);
+      $app.innerHTML = `
+        <div class="bg-[#151922] border border-slate-800 rounded-2xl p-4 mb-4 flex items-center justify-between gap-3">
+          <strong class="text-sm font-bold text-white">Manual Order for Table ${escapeHtml(waiterSelectedTable)}</strong>
+          <select id="wTableSel" class="px-3 py-2 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white">
+            ${Array.from({ length: Number(restaurantData.table_count || 10) }, (_, i) => `
+              <option value="${i + 1}" ${String(i + 1) === String(waiterSelectedTable) ? 'selected' : ''}>Table ${i + 1}</option>
+            `).join('')}
+          </select>
+        </div>
+        <div class="space-y-2.5">
+          ${available.map(m => `
+            <div class="bg-[#151922] border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between gap-3">
+              <div>
+                <div class="font-bold text-sm text-white">${escapeHtml(m.name)}</div>
+                <div class="text-xs text-slate-400">₹${m.price} • ${escapeHtml(m.category)}</div>
+              </div>
+              <button data-wsend="${m.id}" class="px-3.5 py-2 rounded-xl text-xs font-bold text-white shrink-0 transition active:scale-95" style="background: var(--accent);">
+                Send 1× to Kitchen
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      document.getElementById('wTableSel').onchange = (e) => {
+        waiterSelectedTable = e.target.value;
+        renderWaiterOrderPad();
+      };
+      $app.querySelectorAll('[data-wsend]').forEach(b => {
+        b.onclick = async () => {
+          const item = menuItems.find(x => x.id === b.dataset.wsend);
+          if (!item) return;
+          await addDoc(collection(db, 'restaurants', restId, 'orders'), {
+            table_no: String(waiterSelectedTable),
+            customer_name: 'Waiter Order',
+            note: '',
+            items: [{ name: item.name, qty: 1, price: item.price }],
+            total: item.price,
+            status: 'NEW',
+            created_ms: Date.now(),
+            created_at: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+          });
+          showToast(`Sent 1× ${item.name} for Table ${waiterSelectedTable}`, 'success');
+        };
+      });
+    }
+
+    function renderMenuManager() {
+      const todayTotal = liveOrders.reduce((s, o) => s + Number(o.total || 0), 0);
+      $app.innerHTML = `
+        <div class="bg-[#151922] border border-slate-800 rounded-2xl p-4 mb-4 flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-400">Logged Orders Value</div>
+            <strong class="text-xl font-extrabold text-white">₹${todayTotal} <span class="text-xs font-normal text-slate-400">(${liveOrders.length} orders)</span></strong>
+          </div>
+        </div>
+
+        <div class="bg-[#151922] border border-slate-800 rounded-2xl p-4 mb-5 space-y-3">
+          <h3 class="text-sm font-bold text-white">Add New Dish</h3>
+          <input id="newDishName" type="text" placeholder="Dish Name (e.g., Paneer Tikka)" class="w-full px-3.5 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white" />
+          <div class="grid grid-cols-2 gap-2.5">
+            <input id="newDishCat" type="text" placeholder="Category (Starters)" class="w-full px-3.5 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white" />
+            <input id="newDishPrice" type="number" placeholder="Price (180)" class="w-full px-3.5 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white" />
+          </div>
+          <input id="newDishPhoto" type="url" placeholder="Photo URL (WebP/JPG)" class="w-full px-3.5 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white" />
+          <input id="newDishGlb" type="url" placeholder="Optional 3D .glb Model URL" class="w-full px-3.5 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white" />
+          <div class="flex items-center gap-5 text-xs text-slate-300 py-1">
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="newDishVeg" checked class="rounded accent-emerald-500" /> Veg Dish
+            </label>
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="newDishBest" class="rounded accent-rose-500" /> 3D Showcase Hero
+            </label>
+          </div>
+          <button id="addDishBtn" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow" style="background: var(--accent);">
+            Save Dish
+          </button>
+        </div>
+
+        <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wide mb-3">Manage Stock & Items (${menuItems.length})</h3>
+        <div class="space-y-2.5">
+          ${menuItems.map(m => `
+            <div class="bg-[#151922] border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <div class="font-bold text-sm text-white truncate">${escapeHtml(m.name)} • ₹${m.price}</div>
+                <div class="text-xs text-slate-400">${escapeHtml(m.category)} ${m.glb_url ? '• <span class="text-rose-400 font-semibold">3D Enabled</span>' : ''}</div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <button data-toggle="${m.id}" class="px-3 py-1.5 rounded-xl text-xs font-bold text-white ${m.in_stock !== false ? 'bg-emerald-600' : 'bg-amber-600'}">
+                  ${m.in_stock !== false ? 'In Stock' : 'Sold Out'}
+                </button>
+                <button data-del="${m.id}" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-900/60 border border-slate-700 text-xs font-bold text-slate-200">
+                  ${pendingDeleteDishId === m.id ? 'Confirm?' : 'Del'}
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      document.getElementById('addDishBtn').onclick = async () => {
+        const name = document.getElementById('newDishName').value.trim();
+        const price = Number(document.getElementById('newDishPrice').value || 0);
+        if (!name || !price) return showToast('Enter dish name and price', 'error');
+        await addDoc(collection(db, 'restaurants', restId, 'menu'), {
+          name,
+          category: document.getElementById('newDishCat').value.trim() || 'Specials',
+          price,
+          photo_url: document.getElementById('newDishPhoto').value.trim(),
+          glb_url: document.getElementById('newDishGlb').value.trim(),
+          veg: document.getElementById('newDishVeg').checked,
+          bestseller: document.getElementById('newDishBest').checked,
+          in_stock: true
+        });
+        showToast(`Added ${name} to menu`, 'success');
+      };
+
+      $app.querySelectorAll('[data-toggle]').forEach(b => {
+        b.onclick = () => {
+          const item = menuItems.find(x => x.id === b.dataset.toggle);
+          updateDoc(doc(db, 'restaurants', restId, 'menu', item.id), { in_stock: item.in_stock === false });
+        };
+      });
+      $app.querySelectorAll('[data-del]').forEach(b => {
+        b.onclick = async () => {
+          const id = b.dataset.del;
+          if (pendingDeleteDishId !== id) {
+            pendingDeleteDishId = id;
+            renderMenuManager();
+            setTimeout(() => { if (pendingDeleteDishId === id) { pendingDeleteDishId = null; renderMenuManager(); } }, 3000);
+            return;
+          }
+          pendingDeleteDishId = null;
+          await deleteDoc(doc(db, 'restaurants', restId, 'menu', id));
+          showToast('Dish deleted', 'warn');
+        };
+      });
+    }
+
+    function renderRestaurantQRTab() {
+      const base = `${location.origin}${location.pathname}`;
+      const count = Number(restaurantData.table_count || 10);
+      const staffUrl = `${base}?r=${encodeURIComponent(restId)}&panel=staff`;
+
+      $app.innerHTML = `
+        <div class="bg-[#151922] border border-slate-800 rounded-2xl p-4 mb-4 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <strong class="text-sm font-bold text-white">Staff Panel Link</strong>
+            <div class="flex items-center gap-2">
+              <button id="copyStaffUrlBtn" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white">Copy Link</button>
+              <button onclick="window.print()" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-white" style="background: var(--accent);">Print QRs</button>
+            </div>
+          </div>
+          <div class="text-xs text-slate-400 break-all bg-[#1f2430] p-2.5 rounded-xl">${escapeHtml(staffUrl)}</div>
+        </div>
+        <div id="printableQrArea" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5"></div>
+      `;
+
+      document.getElementById('copyStaffUrlBtn').onclick = () => {
+        const temp = document.createElement('textarea');
+        temp.value = staffUrl;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        showToast('Staff panel link copied!', 'success');
+      };
+
+      const grid = document.getElementById('printableQrArea');
+      for (let t = 1; t <= count; t++) {
+        const url = `${base}?r=${encodeURIComponent(restId)}&t=${t}`;
+        const box = document.createElement('div');
+        box.className = 'bg-white text-slate-900 rounded-2xl p-3.5 flex flex-col items-center justify-center gap-2 shadow';
+        box.innerHTML = `
+          <div class="text-xs font-extrabold uppercase tracking-wider text-slate-500">${escapeHtml(restaurantData.name)}</div>
+          <strong class="text-base font-black text-slate-900">Table ${t}</strong>
+        `;
+        const holder = document.createElement('div');
+        box.appendChild(holder);
+        const hint = document.createElement('div');
+        hint.className = 'text-[10px] font-semibold text-slate-500';
+        hint.textContent = 'Scan for 3D Menu & Order';
+        box.appendChild(hint);
+        grid.appendChild(box);
+        new QRCode(holder, { text: url, width: 115, height: 115 });
+      }
+    }
+
+    // ================= 3. SUPER ADMIN PANEL (FOR YOU) =================
+    function renderSuperAdminGate() {
+      $hdrTitle.textContent = 'Super Admin Console';
+      $hdrSub.textContent = 'Multi-Restaurant Control';
+      $app.innerHTML = `
+        <div class="max-w-md mx-auto mt-6 bg-[#151922] border border-slate-800 rounded-3xl p-6 shadow-xl">
+          <h3 class="text-lg font-bold text-white">Super Admin Login</h3>
+          <p class="text-xs text-slate-400 mt-1 mb-4">Manage all onboarded restaurants, PINs & subscriptions.</p>
+          <input id="saPin" type="password" inputmode="numeric" placeholder="Enter Super Admin PIN" class="w-full px-4 py-3 rounded-xl bg-[#1f2430] border border-slate-700 text-base text-white tracking-widest mb-4 focus:outline-none focus:border-rose-500" />
+          <button id="saLoginBtn" class="w-full py-3 rounded-xl font-bold text-sm text-white shadow-lg" style="background: var(--accent);">
+            Open Console
+          </button>
+        </div>
+      `;
+      const loginFn = () => {
+        if (document.getElementById('saPin').value.trim() !== SUPER_ADMIN_PIN) {
+          return showToast('Incorrect Super Admin PIN', 'error');
+        }
+        renderSuperAdminDashboard();
+      };
+      document.getElementById('saLoginBtn').onclick = loginFn;
+      document.getElementById('saPin').onkeydown = (e) => { if (e.key === 'Enter') loginFn(); };
+    }
+
+    function renderSuperAdminDashboard() {
+      const base = `${location.origin}${location.pathname}`;
+      onSnapshot(collection(db, 'restaurants'), (snap) => {
+        const clients = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        $app.innerHTML = `
+          <div class="bg-[#151922] border border-slate-800 rounded-2xl p-4 mb-5 space-y-3">
+            <h3 class="text-sm font-bold text-white">Onboard New Restaurant</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <input id="saSlug" type="text" placeholder="Slug ID (e.g., spice-hub)" class="w-full px-3.5 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white" />
+              <input id="saName" type="text" placeholder="Restaurant Name" class="w-full px-3.5 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white" />
+            </div>
+            <div class="grid grid-cols-2 gap-2.5">
+              <input id="saTables" type="number" value="10" placeholder="Tables" class="w-full px-3.5 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white" />
+              <input id="saColor" type="text" value="#e11d48" placeholder="Hex Color" class="w-full px-3.5 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white" />
+            </div>
+            <div class="grid grid-cols-3 gap-2.5">
+              <input id="saMgrPin" type="text" value="1111" placeholder="Manager PIN" class="w-full px-3 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white" />
+              <input id="saKitPin" type="text" value="2222" placeholder="Kitchen PIN" class="w-full px-3 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white" />
+              <input id="saWtrPin" type="text" value="3333" placeholder="Waiter PIN" class="w-full px-3 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white" />
+            </div>
+            <input id="saReview" type="url" placeholder="Google Review URL" class="w-full px-3.5 py-2.5 rounded-xl bg-[#1f2430] border border-slate-700 text-sm text-white" />
+            <button id="createClientBtn" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow" style="background: var(--accent);">
+              Create Restaurant
+            </button>
+          </div>
+
+          <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wide mb-3">Onboarded Clients (${clients.length})</h3>
+          <div class="space-y-3">
+            ${clients.map(c => `
+              <div class="bg-[#151922] border border-slate-800 rounded-2xl p-4">
+                <div class="flex items-center justify-between gap-2">
+                  <div>
+                    <strong class="text-base font-bold text-white">${escapeHtml(c.name)}</strong>
+                    <span class="text-xs text-slate-400 ml-1">(${escapeHtml(c.id)})</span>
+                  </div>
+                  <button data-cactive="${c.id}" data-cur="${c.active !== false}" class="px-3 py-1 rounded-xl text-xs font-bold text-white ${c.active !== false ? 'bg-emerald-600' : 'bg-amber-600'}">
+                    ${c.active !== false ? 'Active' : 'Suspended'}
+                  </button>
+                </div>
+                <div class="text-xs text-slate-400 mt-1.5">
+                  Tables: ${c.table_count || 10} • PINs: M:<strong class="text-slate-200">${escapeHtml(c.manager_pin)}</strong> / K:<strong class="text-slate-200">${escapeHtml(c.kitchen_pin)}</strong> / W:<strong class="text-slate-200">${escapeHtml(c.waiter_pin)}</strong>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap mt-3 pt-2.5 border-t border-slate-800/80">
+                  <button data-launch-menu="${c.id}" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white">Open Menu</button>
+                  <button data-launch-staff="${c.id}" class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white">Open Staff Panel</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+        document.getElementById('createClientBtn').onclick = async () => {
+          const id = document.getElementById('saSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+          const name = document.getElementById('saName').value.trim();
+          if (!id || !name) return showToast('Slug ID and Name are required', 'error');
+
+          await setDoc(doc(db, 'restaurants', id), {
+            name,
+            table_count: Number(document.getElementById('saTables').value || 10),
+            accent_color: document.getElementById('saColor').value.trim() || '#e11d48',
+            manager_pin: document.getElementById('saMgrPin').value.trim() || '1111',
+            kitchen_pin: document.getElementById('saKitPin').value.trim() || '2222',
+            waiter_pin: document.getElementById('saWtrPin').value.trim() || '3333',
+            google_review_url: document.getElementById('saReview').value.trim(),
+            active: true
+          });
+
+          await addDoc(collection(db, 'restaurants', id, 'menu'), {
+            name: 'House Special Combo',
+            category: 'Specials',
+            price: 199,
+            veg: true,
+            bestseller: false,
+            in_stock: true,
+            photo_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
+            glb_url: ''
+          });
+
+          showToast(`Created ${name} with starter menu item!`, 'success');
+        };
+
+        $app.querySelectorAll('[data-cactive]').forEach(b => {
+          b.onclick = () => {
+            const cur = b.dataset.cur === 'true';
+            updateDoc(doc(db, 'restaurants', b.dataset.cactive), { active: !cur });
+          };
+        });
+
+        $app.querySelectorAll('[data-launch-menu]').forEach(b => {
+          b.onclick = () => {
+            restId = b.dataset.launchMenu;
+            restaurantData = null;
+            switchPanelMode('customer');
+          };
+        });
+
+        $app.querySelectorAll('[data-launch-staff]').forEach(b => {
+          b.onclick = () => {
+            restId = b.dataset.launchStaff;
+            unlockedRole = sessionStorage.getItem(`role_${restId}`) || null;
+            restaurantData = null;
+            switchPanelMode('staff');
+          };
+        });
+      }, showError);
+    }
+
+    boot();
+  </script>
+</body>
+</html>
