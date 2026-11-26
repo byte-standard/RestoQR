@@ -1,0 +1,15 @@
+{
+  "name": "SmartMenu 3D Dining",
+  "short_name": "SmartMenu",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b0d12",
+  "theme_color": "#e11d48",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3448/3448609.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
