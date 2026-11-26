@@ -3,351 +3,459 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D Smart Menu MVP</title>
+  <title>SmartMenu 3D • Digital Dining & POS</title>
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#e11d48" />
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
       --accent: #e11d48;
-      --bg: #0f1115;
-      --card: #181b22;
-      --card-2: #222630;
+      --bg: #0b0d12;
+      --card: #151922;
+      --card-2: #1f2430;
       --text: #f8fafc;
       --muted: #94a3b8;
-      --border: #2c313d;
+      --border: #2a303d;
       --green: #16a34a;
       --amber: #d97706;
+      --blue: #2563eb;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-    body { background: var(--bg); color: var(--text); padding-bottom: 96px; }
+    body { background: var(--bg); color: var(--text); padding-bottom: 92px; }
     header {
-      position: sticky; top: 0; z-index: 20;
-      background: rgba(15, 17, 21, 0.92); backdrop-filter: blur(10px);
-      border-bottom: 1px solid var(--border); padding: 14px 16px;
+      position: sticky; top: 0; z-index: 25;
+      background: rgba(11, 13, 18, 0.94); backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border); padding: 12px 16px;
       display: flex; justify-content: space-between; align-items: center; gap: 10px;
     }
-    .brand-title { font-size: 1.1rem; font-weight: 700; }
-    .table-badge {
+    .title { font-size: 1.05rem; font-weight: 700; }
+    .sub { font-size: 0.78rem; color: var(--muted); }
+    .badge {
       background: var(--card-2); border: 1px solid var(--border);
-      padding: 5px 10px; border-radius: 999px; font-size: 0.8rem; color: var(--muted);
+      padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600;
     }
-    .container { max-width: 900px; margin: 0 auto; padding: 16px; }
-    .section-title { font-size: 0.95rem; font-weight: 700; margin: 18px 0 10px; color: #e2e8f0; }
+    .container { max-width: 960px; margin: 0 auto; padding: 16px; }
+    .section-title { font-size: 0.95rem; font-weight: 700; margin: 16px 0 10px; color: #e2e8f0; }
 
-    /* 3D Showcase */
+    .btn {
+      border: none; border-radius: 10px; padding: 9px 14px;
+      font-weight: 600; font-size: 0.86rem; cursor: pointer; color: #fff;
+      background: var(--accent); transition: opacity 0.15s;
+    }
+    .btn:active { opacity: 0.85; }
+    .btn-ghost { background: var(--card-2); color: var(--text); border: 1px solid var(--border); }
+    .btn-green { background: var(--green); }
+    .btn-amber { background: var(--amber); }
+    .btn-blue { background: var(--blue); }
+    .btn-sm { padding: 6px 10px; font-size: 0.78rem; border-radius: 8px; }
+
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px; margin-bottom: 12px;
+    }
+    .row-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .muted { color: var(--muted); font-size: 0.82rem; }
+
     .showcase-3d {
-      background: linear-gradient(145deg, #1d222d, #13161c);
+      background: linear-gradient(145deg, #1b202c, #11141b);
       border: 1px solid var(--border); border-radius: 16px; padding: 14px;
     }
     model-viewer {
       width: 100%; height: 240px; border-radius: 12px;
-      background: #0b0d11; --poster-color: transparent;
+      background: #080a0e; --poster-color: transparent;
     }
-    .hero-controls {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-top: 12px; gap: 10px; flex-wrap: wrap;
-    }
-    .btn {
-      border: none; border-radius: 10px; padding: 9px 14px;
-      font-weight: 600; font-size: 0.88rem; cursor: pointer; color: #fff;
-      background: var(--accent);
-    }
-    .btn-ghost {
-      background: var(--card-2); color: var(--text); border: 1px solid var(--border);
-    }
-    .btn-sm { padding: 6px 10px; font-size: 0.8rem; border-radius: 8px; }
 
-    /* Filters */
-    .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-top: 10px; }
+    .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
     .chip {
       white-space: nowrap; padding: 7px 13px; border-radius: 999px;
       background: var(--card); border: 1px solid var(--border);
       color: var(--muted); font-size: 0.82rem; cursor: pointer;
     }
     .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-
-    /* Menu Grid */
-    .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; }
-    .card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px;
+    .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-top: 12px; }
+    .dish-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 12px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;
     }
-    .card img { width: 100%; height: 140px; object-fit: cover; border-radius: 10px; background: var(--card-2); }
-    .row-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-    .price { font-weight: 700; font-size: 1rem; color: #fff; }
-    .muted { color: var(--muted); font-size: 0.82rem; }
+    .dish-card img { width: 100%; height: 135px; object-fit: cover; border-radius: 10px; background: var(--card-2); }
     .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .veg { background: #22c55e; }
     .nonveg { background: #ef4444; }
 
-    /* Cart Bar & Modal */
+    .tracker-banner {
+      background: rgba(37, 99, 235, 0.16); border: 1px solid rgba(37, 99, 235, 0.45);
+      border-radius: 12px; padding: 12px; margin-bottom: 14px;
+    }
+
     .cart-bar {
       position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
-      background: #141820; border-top: 1px solid var(--border);
+      background: #131720; border-top: 1px solid var(--border);
       padding: 12px 16px; display: none; justify-content: space-between; align-items: center;
     }
     .modal-backdrop {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 50;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 50;
       display: none; align-items: flex-end; justify-content: center;
     }
     .modal-backdrop.open { display: flex; }
     .modal {
       background: var(--card); border: 1px solid var(--border);
-      border-radius: 18px 18px 0 0; width: 100%; max-width: 600px;
-      padding: 18px; max-height: 85vh; overflow-y: auto;
+      border-radius: 18px 18px 0 0; width: 100%; max-width: 620px;
+      padding: 18px; max-height: 88vh; overflow-y: auto;
     }
     input, select, textarea {
       width: 100%; padding: 10px 12px; border-radius: 10px;
       background: var(--card-2); border: 1px solid var(--border);
-      color: var(--text); font-size: 0.9rem; margin-top: 6px; margin-bottom: 12px;
+      color: var(--text); font-size: 0.9rem; margin-top: 5px; margin-bottom: 12px;
     }
 
-    /* Counter Orders */
-    .order-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 14px; margin-bottom: 12px;
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 35;
+      background: #12161f; border-top: 1px solid var(--border);
+      display: flex; justify-content: space-around; padding: 8px 6px;
     }
-    .status-pill {
-      padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700;
-      background: rgba(217, 119, 6, 0.2); color: #fbbf24;
+    .nav-tab {
+      background: none; border: none; color: var(--muted);
+      font-size: 0.8rem; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer;
     }
-    .status-pill.SERVED { background: rgba(22, 163, 74, 0.2); color: #4ade80; }
+    .nav-tab.active { background: var(--card-2); color: #fff; }
 
-    /* QR Grid */
-    .qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-top: 14px; }
-    .qr-box {
-      background: #fff; color: #111; border-radius: 12px; padding: 12px;
-      text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    .table-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+    .table-tile {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 10px; text-align: center; cursor: pointer;
     }
+    .table-tile.busy { border-color: var(--amber); background: rgba(217, 119, 6, 0.12); }
+    .table-tile.ready { border-color: var(--green); background: rgba(22, 163, 74, 0.18); }
+
+    .pill { padding: 3px 9px; border-radius: 999px; font-size: 0.74rem; font-weight: 700; }
+    .pill.NEW { background: rgba(225, 29, 72, 0.2); color: #fb7185; }
+    .pill.PREPARING { background: rgba(217, 119, 6, 0.2); color: #fbbf24; }
+    .pill.READY { background: rgba(22, 163, 74, 0.2); color: #4ade80; }
+    .pill.SERVED { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+
+    .qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; }
+    .qr-box { background: #fff; color: #111; border-radius: 12px; padding: 10px; text-align: center; }
   </style>
 </head>
 <body>
   <header>
     <div>
-      <div class="brand-title" id="headerTitle">Loading Menu...</div>
-      <div class="muted" id="headerSub">Smart Dining</div>
+      <div class="title" id="hdrTitle">SmartMenu 3D</div>
+      <div class="sub" id="hdrSub">Instant Table Dining</div>
     </div>
-    <div style="display:flex; gap:8px; align-items:center;">
-      <span class="table-badge" id="tableBadge">Table 1</span>
-      <button class="btn btn-ghost btn-sm" onclick="switchView('menu')">Menu</button>
-      <button class="btn btn-ghost btn-sm" onclick="switchView('counter')">Counter</button>
-      <button class="btn btn-ghost btn-sm" onclick="switchView('qr')">QR Gen</button>
-    </div>
+    <div id="hdrActions" style="display:flex; gap:8px; align-items:center;"></div>
   </header>
 
-  <div class="container" id="appRoot"></div>
+  <div class="container" id="app"></div>
 
   <div class="cart-bar" id="cartBar">
     <div>
       <div id="cartSummary" style="font-weight:700;">0 items • ₹0</div>
-      <div class="muted">Tap review to place order</div>
+      <div class="muted">Tap to review & send order</div>
     </div>
-    <button class="btn" onclick="openCartModal()">View Order</button>
+    <button class="btn" id="openCartBtn">Review Order</button>
   </div>
 
   <div class="modal-backdrop" id="cartModal">
     <div class="modal">
-      <div class="row-between" style="margin-bottom:12px;">
-        <h3>Your Order</h3>
-        <button class="btn btn-ghost btn-sm" onclick="closeCartModal()">Close</button>
+      <div class="row-between" style="margin-bottom:10px;">
+        <h3>Confirm Table Order</h3>
+        <button class="btn btn-ghost btn-sm" id="closeCartBtn">Close</button>
       </div>
-      <div id="cartItemsList"></div>
-      <label class="muted">Your Name (Optional)</label>
-      <input id="custName" placeholder="e.g., Rahul" />
-      <label class="muted">Kitchen Note (Optional)</label>
-      <textarea id="custNote" rows="2" placeholder="Less spicy, no onion..."></textarea>
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <button class="btn" style="flex:1;" id="placeOrderBtn" onclick="submitOrder(false)">Send Order to Counter</button>
-        <button class="btn btn-ghost" style="flex:1;" onclick="submitOrder(true)">Send via WhatsApp</button>
-      </div>
-      <div id="postOrderBox" style="display:none; margin-top:14px; padding:12px; background:var(--card-2); border-radius:12px;"></div>
+      <div id="cartList"></div>
+      <label class="muted">Guest Name (Optional)</label>
+      <input id="guestName" placeholder="e.g., Kiran" />
+      <label class="muted">Cooking Instructions (Optional)</label>
+      <textarea id="orderNote" rows="2" placeholder="Less spicy, extra chutney..."></textarea>
+      <button class="btn" style="width:100%;" id="submitOrderBtn">Place Order Now</button>
     </div>
   </div>
 
-  <script>
-    const API_URL = 'YOUR_APPS_SCRIPT_WEB_APP_URL';
+  <div class="bottom-nav" id="bottomNav" style="display:none;"></div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import {
+      getFirestore, collection, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc,
+      onSnapshot, query, orderBy
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDvC0eAyXeDj8-Erj16jGV1hQSR5H0WsSw",
+      authDomain: "restoqr-b9d9c.firebaseapp.com",
+      projectId: "restoqr-b9d9c",
+      storageBucket: "restoqr-b9d9c.firebasestorage.app",
+      messagingSenderId: "467335839268",
+      appId: "1:467335839268:web:7d302fb5387181efcda2b1"
+    };
+
+    // Change this to your private Super Admin PIN before going live
+    const SUPER_ADMIN_PIN = '9999';
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+
     const params = new URLSearchParams(location.search);
-    let currentRestaurantId = params.get('r') || 'demo-cafe';
-    let tableNo = params.get('t') || '1';
-    let currentView = params.get('view') || 'menu';
+    const restId = (params.get('r') || 'demo-cafe').trim();
+    const tableNo = (params.get('t') || '1').trim();
+    const panelMode = (params.get('panel') || 'customer').trim();
 
-    let restaurant = { name: 'Smart Menu', accent_color: '#e11d48', whatsapp_number: '', google_review_url: '' };
+    let restaurantData = null;
     let menuItems = [];
-    let hero3DItems = [];
-    let activeHeroIdx = 0;
-    let selectedCategory = 'All';
-    let vegOnly = false;
+    let liveOrders = [];
     let cart = {};
-    let pollTimer = null;
-    let lastOrderCount = 0;
+    let selectedCat = 'All';
+    let vegOnly = false;
+    let heroIdx = 0;
 
-    document.getElementById('tableBadge').textContent = `Table ${tableNo}`;
+    let unlockedRole = sessionStorage.getItem(`role_${restId}`) || null;
+    let activeTab = 'queue';
+    let waiterSelectedTable = '1';
+    let lastKnownOrderCount = -1;
 
-    function setAccent(color) {
-      if (color) document.documentElement.style.setProperty('--accent', color);
+    const $app = document.getElementById('app');
+    const $hdrTitle = document.getElementById('hdrTitle');
+    const $hdrSub = document.getElementById('hdrSub');
+    const $hdrActions = document.getElementById('hdrActions');
+    const $bottomNav = document.getElementById('bottomNav');
+
+    function setAccent(hex) {
+      if (hex) document.documentElement.style.setProperty('--accent', hex);
     }
 
-    function switchView(view) {
-      currentView = view;
-      clearInterval(pollTimer);
-      document.getElementById('cartBar').style.display = 'none';
-      if (view === 'menu') {
-        loadMenu();
-      } else if (view === 'counter') {
-        renderCounterShell();
-        fetchOrders(true);
-        pollTimer = setInterval(() => fetchOrders(false), 6000);
-      } else if (view === 'qr') {
-        renderQRGenerator();
-      }
-    }
-
-    async function loadMenu() {
-      const cacheKey = `menu_cache_${currentRestaurantId}`;
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        restaurant = parsed.restaurant;
-        menuItems = parsed.menu;
-        setAccent(restaurant.accent_color);
-        renderMenuView();
-      } else {
-        document.getElementById('appRoot').innerHTML = '<p class="muted">Loading menu...</p>';
-      }
-
+    function playBeep() {
       try {
-        const res = await fetch(`${API_URL}?action=init&r=${encodeURIComponent(currentRestaurantId)}`);
-        const data = await res.json();
-        if (data.ok) {
-          restaurant = data.restaurant;
-          menuItems = data.menu;
-          localStorage.setItem(cacheKey, JSON.stringify({ restaurant, menu: menuItems }));
-          setAccent(restaurant.accent_color);
-          if (currentView === 'menu') renderMenuView();
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = 880;
+        osc.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.22);
+      } catch (e) {}
+    }
+
+    async function ensureDemoExists() {
+      if (restId !== 'demo-cafe') return;
+      const ref = doc(db, 'restaurants', 'demo-cafe');
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        await setDoc(ref, {
+          name: 'Royal Spice Cafe (Demo)',
+          accent_color: '#e11d48',
+          table_count: 10,
+          active: true,
+          manager_pin: '1111',
+          kitchen_pin: '2222',
+          waiter_pin: '3333',
+          google_review_url: 'https://google.com'
+        });
+        const sampleDishes = [
+          {
+            name: 'Signature Masala Burger',
+            category: 'Burgers',
+            price: 149,
+            veg: true,
+            bestseller: true,
+            in_stock: true,
+            photo_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500',
+            glb_url: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+          },
+          {
+            name: 'Hyderabadi Dum Biryani',
+            category: 'Main Course',
+            price: 220,
+            veg: false,
+            bestseller: false,
+            in_stock: true,
+            photo_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500',
+            glb_url: ''
+          },
+          {
+            name: 'Cold Coffee Frappe',
+            category: 'Beverages',
+            price: 99,
+            veg: true,
+            bestseller: false,
+            in_stock: true,
+            photo_url: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=500',
+            glb_url: ''
+          }
+        ];
+        for (const d of sampleDishes) {
+          await addDoc(collection(db, 'restaurants', 'demo-cafe', 'menu'), d);
         }
-      } catch (e) {
-        if (!cached) document.getElementById('appRoot').innerHTML = '<p class="muted">Could not load menu. Check connection.</p>';
       }
     }
 
-    function renderMenuView() {
-      document.getElementById('headerTitle').textContent = restaurant.name;
-      document.getElementById('headerSub').textContent = 'Interactive 3D & Instant Ordering';
-      hero3DItems = menuItems.filter(i => i.bestseller && i.glb_url);
-      if (activeHeroIdx >= hero3DItems.length) activeHeroIdx = 0;
+    async function boot() {
+      await ensureDemoExists();
 
-      const categories = ['All', ...new Set(menuItems.map(i => i.category).filter(Boolean))];
-      const currentHero = hero3DItems[activeHeroIdx];
+      if (panelMode === 'superadmin') {
+        renderSuperAdminGate();
+        return;
+      }
 
-      const heroHtml = currentHero ? `
-        <div class="section-title">3D Signature Showcase (Drag to Rotate)</div>
+      const restSnap = await getDoc(doc(db, 'restaurants', restId));
+      if (!restSnap.exists()) {
+        $app.innerHTML = `<div class="card"><h3>Restaurant Not Found</h3><p class="muted">Check the QR link or contact admin.</p></div>`;
+        return;
+      }
+      restaurantData = { id: restSnap.id, ...restSnap.data() };
+      setAccent(restaurantData.accent_color);
+
+      if (restaurantData.active === false && panelMode === 'customer') {
+        $hdrTitle.textContent = restaurantData.name;
+        $app.innerHTML = `<div class="card"><h3>Menu Temporarily Unavailable</h3><p class="muted">Please ask staff for assistance.</p></div>`;
+        return;
+      }
+
+      onSnapshot(collection(db, 'restaurants', restId, 'menu'), (snap) => {
+        menuItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (panelMode === 'customer') renderCustomerMenu();
+        if (panelMode === 'staff' && unlockedRole) renderStaffWorkspace();
+      });
+
+      const qOrders = query(collection(db, 'restaurants', restId, 'orders'), orderBy('created_ms', 'desc'));
+      onSnapshot(qOrders, (snap) => {
+        const incoming = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (panelMode === 'staff' && unlockedRole && lastKnownOrderCount !== -1 && incoming.length > lastKnownOrderCount) {
+          playBeep();
+        }
+        lastKnownOrderCount = incoming.length;
+        liveOrders = incoming;
+        if (panelMode === 'customer') renderCustomerMenu();
+        if (panelMode === 'staff' && unlockedRole) renderStaffWorkspace();
+      });
+
+      if (panelMode === 'staff') {
+        if (!unlockedRole) renderStaffPinGate();
+        else renderStaffWorkspace();
+      } else {
+        renderCustomerMenu();
+      }
+    }
+
+    function renderCustomerMenu() {
+      $hdrTitle.textContent = restaurantData.name;
+      $hdrSub.textContent = '3D Interactive Menu';
+      $hdrActions.innerHTML = `
+        <span class="badge">Table ${tableNo}</span>
+        <button class="btn btn-ghost btn-sm" id="callWaiterBtn">Call Waiter</button>
+      `;
+      document.getElementById('callWaiterBtn').onclick = () => triggerServiceCall('Waiter Requested');
+
+      const activeTableOrders = liveOrders.filter(o => String(o.table_no) === String(tableNo) && o.status !== 'CLOSED');
+      const trackerHtml = activeTableOrders.length ? `
+        <div class="tracker-banner">
+          <div class="row-between">
+            <strong>Live Table ${tableNo} Order Status</strong>
+            <span class="pill ${activeTableOrders[0].status}">${activeTableOrders[0].status}</span>
+          </div>
+          <div class="muted" style="margin-top:4px;">
+            ${activeTableOrders[0].items.map(i => `${i.name} ×${i.qty}`).join(', ')} • Total ₹${activeTableOrders[0].total}
+          </div>
+          ${restaurantData.google_review_url ? `
+            <a href="${restaurantData.google_review_url}" target="_blank" class="btn btn-green btn-sm" style="display:inline-block; margin-top:8px; text-decoration:none;">
+              Rate Us on Google
+            </a>` : ''}
+        </div>
+      ` : '';
+
+      const availableMenu = menuItems.filter(m => m.in_stock !== false);
+      const heroes = availableMenu.filter(m => m.bestseller && m.glb_url);
+      if (heroIdx >= heroes.length) heroIdx = 0;
+      const hero = heroes[heroIdx];
+
+      const heroHtml = hero ? `
+        <div class="section-title">3D Signature Dish (Touch & Rotate)</div>
         <div class="showcase-3d">
-          <model-viewer
-            src="${currentHero.glb_url}"
-            alt="${currentHero.name}"
-            camera-controls
-            auto-rotate
-            shadow-intensity="1"
-            ar
-          ></model-viewer>
-          <div class="hero-controls">
+          <model-viewer src="${hero.glb_url}" alt="${hero.name}" camera-controls auto-rotate shadow-intensity="1" ar></model-viewer>
+          <div class="row-between" style="margin-top:10px;">
             <div>
-              <div style="font-weight:700;">${currentHero.name} • ₹${currentHero.price}</div>
-              <div class="muted">${currentHero.category}</div>
+              <div style="font-weight:700;">${hero.name} • ₹${hero.price}</div>
+              <div class="muted">${hero.category}</div>
             </div>
             <div style="display:flex; gap:8px;">
-              ${hero3DItems.length > 1 ? `<button class="btn btn-ghost btn-sm" onclick="cycleHero()">Next 3D Dish</button>` : ''}
-              <button class="btn btn-sm" onclick="addToCart('${currentHero.id}')">+ Add</button>
+              ${heroes.length > 1 ? `<button class="btn btn-ghost btn-sm" id="nextHeroBtn">Next 3D</button>` : ''}
+              <button class="btn btn-sm" data-add="${hero.id}">+ Add</button>
             </div>
           </div>
         </div>
       ` : '';
 
-      const filtered = menuItems.filter(item => {
-        const catOk = selectedCategory === 'All' || item.category === selectedCategory;
-        const vegOk = !vegOnly || item.veg;
-        return catOk && vegOk;
-      });
+      const cats = ['All', ...new Set(availableMenu.map(i => i.category).filter(Boolean))];
+      const filtered = availableMenu.filter(i => (selectedCat === 'All' || i.category === selectedCat) && (!vegOnly || i.veg));
 
-      const cardsHtml = filtered.map(item => {
-        const qty = cart[item.id]?.qty || 0;
-        return `
-          <div class="card">
-            <div>
-              ${item.photo_url ? `<img src="${item.photo_url}" alt="${item.name}" loading="lazy" />` : ''}
-              <div class="row-between" style="margin-top:8px;">
-                <span class="dot ${item.veg ? 'veg' : 'nonveg'}"></span>
-                <span class="muted">${item.category}</span>
-              </div>
-              <div style="font-weight:700; margin-top:4px;">${item.name}</div>
-            </div>
-            <div class="row-between">
-              <span class="price">₹${item.price}</span>
-              ${qty === 0
-                ? `<button class="btn btn-sm" onclick="addToCart('${item.id}')">+ Add</button>`
-                : `<div style="display:flex; gap:6px; align-items:center;">
-                     <button class="btn btn-ghost btn-sm" onclick="changeQty('${item.id}', -1)">-</button>
-                     <span style="font-weight:700;">${qty}</span>
-                     <button class="btn btn-sm" onclick="changeQty('${item.id}', 1)">+</button>
-                   </div>`
-              }
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      document.getElementById('appRoot').innerHTML = `
+      $app.innerHTML = `
+        ${trackerHtml}
         ${heroHtml}
-        <div class="section-title">Full Menu</div>
+        <div class="section-title">Menu</div>
         <div class="filters">
-          <button class="chip ${vegOnly ? 'active' : ''}" onclick="toggleVeg()">Veg Only</button>
-          ${categories.map(c => `
-            <button class="chip ${selectedCategory === c ? 'active' : ''}" onclick="selectCat('${c.replace(/'/g, "\\'")}')">${c}</button>
-          `).join('')}
+          <button class="chip ${vegOnly ? 'active' : ''}" id="vegChip">Veg Only</button>
+          ${cats.map(c => `<button class="chip ${selectedCat === c ? 'active' : ''}" data-cat="${c}">${c}</button>`).join('')}
         </div>
-        <div class="menu-grid">${cardsHtml || '<p class="muted">No items match filter.</p>'}</div>
+        <div class="menu-grid">
+          ${filtered.map(item => {
+            const q = cart[item.id]?.qty || 0;
+            return `
+              <div class="dish-card">
+                <div>
+                  ${item.photo_url ? `<img src="${item.photo_url}" alt="${item.name}" loading="lazy" />` : ''}
+                  <div class="row-between" style="margin-top:8px;">
+                    <span class="dot ${item.veg ? 'veg' : 'nonveg'}"></span>
+                    <span class="muted">${item.category}</span>
+                  </div>
+                  <div style="font-weight:700; margin-top:4px;">${item.name}</div>
+                </div>
+                <div class="row-between">
+                  <strong>₹${item.price}</strong>
+                  ${q === 0
+                    ? `<button class="btn btn-sm" data-add="${item.id}">+ Add</button>`
+                    : `<div style="display:flex; gap:6px; align-items:center;">
+                         <button class="btn btn-ghost btn-sm" data-dec="${item.id}">-</button>
+                         <strong>${q}</strong>
+                         <button class="btn btn-sm" data-add="${item.id}">+</button>
+                       </div>`
+                  }
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
       `;
-      updateCartBar();
+
+      if (document.getElementById('nextHeroBtn')) {
+        document.getElementById('nextHeroBtn').onclick = () => { heroIdx = (heroIdx + 1) % heroes.length; renderCustomerMenu(); };
+      }
+      document.getElementById('vegChip').onclick = () => { vegOnly = !vegOnly; renderCustomerMenu(); };
+      document.querySelectorAll('[data-cat]').forEach(el => el.onclick = () => { selectedCat = el.dataset.cat; renderCustomerMenu(); });
+      document.querySelectorAll('[data-add]').forEach(el => el.onclick = () => updateCart(el.dataset.add, 1));
+      document.querySelectorAll('[data-dec]').forEach(el => el.onclick = () => updateCart(el.dataset.dec, -1));
+      refreshCartBar();
     }
 
-    function cycleHero() {
-      if (!hero3DItems.length) return;
-      activeHeroIdx = (activeHeroIdx + 1) % hero3DItems.length;
-      renderMenuView();
-    }
-
-    function selectCat(cat) {
-      selectedCategory = cat;
-      renderMenuView();
-    }
-
-    function toggleVeg() {
-      vegOnly = !vegOnly;
-      renderMenuView();
-    }
-
-    function addToCart(id) {
+    function updateCart(id, delta) {
       const item = menuItems.find(m => m.id === id);
       if (!item) return;
       if (!cart[id]) cart[id] = { ...item, qty: 0 };
-      cart[id].qty += 1;
-      renderMenuView();
-    }
-
-    function changeQty(id, delta) {
-      if (!cart[id]) return;
       cart[id].qty += delta;
       if (cart[id].qty <= 0) delete cart[id];
-      renderMenuView();
-      if (document.getElementById('cartModal').classList.contains('open')) renderCartModalBody();
+      renderCustomerMenu();
+      if (document.getElementById('cartModal').classList.contains('open')) renderCartModal();
     }
 
-    function updateCartBar() {
+    function refreshCartBar() {
       const list = Object.values(cart);
       const count = list.reduce((s, i) => s + i.qty, 0);
       const total = list.reduce((s, i) => s + i.qty * i.price, 0);
       const bar = document.getElementById('cartBar');
-      if (count > 0 && currentView === 'menu') {
+      if (count > 0 && panelMode === 'customer') {
         bar.style.display = 'flex';
         document.getElementById('cartSummary').textContent = `${count} items • ₹${total}`;
       } else {
@@ -355,129 +463,432 @@
       }
     }
 
-    function openCartModal() {
-      document.getElementById('postOrderBox').style.display = 'none';
-      renderCartModalBody();
-      document.getElementById('cartModal').classList.add('open');
-    }
-
-    function closeCartModal() {
-      document.getElementById('cartModal').classList.remove('open');
-    }
-
-    function renderCartModalBody() {
+    function renderCartModal() {
       const list = Object.values(cart);
       const total = list.reduce((s, i) => s + i.qty * i.price, 0);
-      document.getElementById('cartItemsList').innerHTML = list.map(i => `
+      document.getElementById('cartList').innerHTML = list.map(i => `
         <div class="row-between" style="padding:8px 0; border-bottom:1px solid var(--border);">
-          <div>
-            <div style="font-weight:600;">${i.name}</div>
-            <div class="muted">₹${i.price} × ${i.qty} = ₹${i.price * i.qty}</div>
-          </div>
+          <div><strong>${i.name}</strong><div class="muted">₹${i.price} × ${i.qty}</div></div>
           <div style="display:flex; gap:6px;">
-            <button class="btn btn-ghost btn-sm" onclick="changeQty('${i.id}', -1)">-</button>
-            <button class="btn btn-sm" onclick="changeQty('${i.id}', 1)">+</button>
+            <button class="btn btn-ghost btn-sm" data-mdec="${i.id}">-</button>
+            <button class="btn btn-sm" data-madd="${i.id}">+</button>
           </div>
         </div>
-      `).join('') + `<div style="font-weight:700; margin-top:10px;">Total: ₹${total}</div>`;
+      `).join('') + `<div style="font-weight:700; margin:10px 0;">Grand Total: ₹${total}</div>`;
+
+      document.querySelectorAll('[data-madd]').forEach(el => el.onclick = () => updateCart(el.dataset.madd, 1));
+      document.querySelectorAll('[data-mdec]').forEach(el => el.onclick = () => updateCart(el.dataset.mdec, -1));
     }
 
-    async function submitOrder(viaWhatsApp) {
+    document.getElementById('openCartBtn').onclick = () => {
+      renderCartModal();
+      document.getElementById('cartModal').classList.add('open');
+    };
+    document.getElementById('closeCartBtn').onclick = () => document.getElementById('cartModal').classList.remove('open');
+
+    document.getElementById('submitOrderBtn').onclick = async () => {
       const items = Object.values(cart);
       if (!items.length) return;
       const total = items.reduce((s, i) => s + i.qty * i.price, 0);
-      const note = document.getElementById('custNote').value.trim();
-      const customerName = document.getElementById('custName').value.trim() || 'Guest';
+      const btn = document.getElementById('submitOrderBtn');
+      btn.disabled = true; btn.textContent = 'Sending to Kitchen...';
 
-      if (viaWhatsApp && restaurant.whatsapp_number) {
-        const lines = items.map(i => `• ${i.name} x${i.qty} (₹${i.price * i.qty})`).join('%0A');
-        const msg = `*New Order - ${restaurant.name}*%0ATable: ${tableNo}%0AGuest: ${customerName}%0A${lines}%0A*Total: ₹${total}*${note ? `%0ANote: ${note}` : ''}`;
-        window.open(`https://wa.me/${restaurant.whatsapp_number}?text=${msg}`, '_blank');
-      }
+      await addDoc(collection(db, 'restaurants', restId, 'orders'), {
+        table_no: String(tableNo),
+        customer_name: document.getElementById('guestName').value.trim() || 'Guest',
+        note: document.getElementById('orderNote').value.trim(),
+        items: items.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
+        total,
+        status: 'NEW',
+        created_ms: Date.now(),
+        created_at: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      });
 
-      const btn = document.getElementById('placeOrderBtn');
-      btn.disabled = true;
-      btn.textContent = 'Sending...';
+      cart = {};
+      document.getElementById('orderNote').value = '';
+      document.getElementById('cartModal').classList.remove('open');
+      btn.disabled = false; btn.textContent = 'Place Order Now';
+      renderCustomerMenu();
+    };
 
-      try {
-        const res = await fetch(API_URL, {
-          method: 'POST',
-          body: JSON.stringify({
-            action: 'place_order',
-            r: currentRestaurantId,
-            table_no: tableNo,
-            items: items.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
-            total,
-            note,
-            customer_name: customerName
-          })
-        });
-        const data = await res.json();
-        cart = {};
-        renderMenuView();
-
-        const reviewBtn = restaurant.google_review_url
-          ? `<a class="btn btn-sm" style="display:inline-block; margin-top:8px; text-decoration:none;" target="_blank" href="${restaurant.google_review_url}">Rate Us on Google</a>`
-          : '';
-
-        document.getElementById('postOrderBox').style.display = 'block';
-        document.getElementById('postOrderBox').innerHTML = `
-          <div style="font-weight:700; color:#4ade80;">Order Sent! ID: ${data.order_id || 'Saved'}</div>
-          <div class="muted">Table ${tableNo} order received by counter.</div>
-          ${reviewBtn}
-        `;
-      } catch (e) {
-        alert('Could not log order online. Try WhatsApp button.');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Send Order to Counter';
-      }
+    async function triggerServiceCall(label) {
+      await addDoc(collection(db, 'restaurants', restId, 'orders'), {
+        table_no: String(tableNo),
+        customer_name: 'Service Alert',
+        note: label,
+        items: [{ name: `🔔 ${label}`, qty: 1, price: 0 }],
+        total: 0,
+        status: 'NEW',
+        created_ms: Date.now(),
+        created_at: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      });
+      alert('Waiter notified!');
     }
 
-    function playChime() {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.value = 880;
-        osc.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.18);
-      } catch (e) {}
-    }
-
-    function renderCounterShell() {
-      document.getElementById('headerTitle').textContent = `${currentRestaurantId} • Counter`;
-      document.getElementById('headerSub').textContent = 'Live Table Orders';
-      document.getElementById('appRoot').innerHTML = `
-        <div class="row-between" style="margin-bottom:12px;">
-          <div class="section-title" style="margin:0;">Incoming Orders</div>
-          <button class="btn btn-ghost btn-sm" onclick="fetchOrders(true)">Refresh</button>
+    function renderStaffPinGate() {
+      $hdrTitle.textContent = restaurantData.name;
+      $hdrSub.textContent = 'Staff & Manager Login';
+      $bottomNav.style.display = 'none';
+      $app.innerHTML = `
+        <div class="card" style="max-width:400px; margin:24px auto;">
+          <h3>Enter Role PIN</h3>
+          <p class="muted" style="margin:6px 0 12px;">Default PINs: Manager <b>1111</b> • Kitchen <b>2222</b> • Waiter <b>3333</b></p>
+          <input id="staffPinInput" type="password" inputmode="numeric" placeholder="4-digit PIN" />
+          <button class="btn" style="width:100%;" id="unlockStaffBtn">Unlock Panel</button>
         </div>
-        <div id="ordersList"><p class="muted">Loading orders...</p></div>
+      `;
+      document.getElementById('unlockStaffBtn').onclick = () => {
+        const pin = document.getElementById('staffPinInput').value.trim();
+        if (pin === String(restaurantData.manager_pin)) unlockedRole = 'manager';
+        else if (pin === String(restaurantData.kitchen_pin)) unlockedRole = 'kitchen';
+        else if (pin === String(restaurantData.waiter_pin)) unlockedRole = 'waiter';
+        else return alert('Invalid PIN');
+
+        sessionStorage.setItem(`role_${restId}`, unlockedRole);
+        activeTab = unlockedRole === 'waiter' ? 'tables' : 'queue';
+        renderStaffWorkspace();
+      };
+    }
+
+    function renderStaffWorkspace() {
+      $hdrTitle.textContent = restaurantData.name;
+      $hdrSub.textContent = `Role: ${unlockedRole.toUpperCase()}`;
+      $hdrActions.innerHTML = `<button class="btn btn-ghost btn-sm" id="logoutRoleBtn">Switch Role</button>`;
+      document.getElementById('logoutRoleBtn').onclick = () => {
+        sessionStorage.removeItem(`role_${restId}`);
+        unlockedRole = null;
+        renderStaffPinGate();
+      };
+
+      const roleTabs = {
+        kitchen: [
+          { id: 'queue', label: 'Kitchen Queue' },
+          { id: 'history', label: 'Completed' }
+        ],
+        waiter: [
+          { id: 'tables', label: 'Tables & Ready' },
+          { id: 'take_order', label: 'Take Order' }
+        ],
+        manager: [
+          { id: 'queue', label: 'Live Counter' },
+          { id: 'tables', label: 'Tables' },
+          { id: 'menu_mgr', label: 'Menu & Stock' },
+          { id: 'qr_mgr', label: 'Table QRs' }
+        ]
+      };
+
+      const tabs = roleTabs[unlockedRole] || roleTabs.kitchen;
+      if (!tabs.some(t => t.id === activeTab)) activeTab = tabs[0].id;
+
+      $bottomNav.style.display = 'flex';
+      $bottomNav.innerHTML = tabs.map(t => `
+        <button class="nav-tab ${activeTab === t.id ? 'active' : ''}" data-tab="${t.id}">${t.label}</button>
+      `).join('');
+      $bottomNav.querySelectorAll('[data-tab]').forEach(btn => {
+        btn.onclick = () => { activeTab = btn.dataset.tab; renderStaffWorkspace(); };
+      });
+
+      if (activeTab === 'queue') renderLiveQueue(unlockedRole === 'kitchen');
+      if (activeTab === 'history') renderOrderHistory();
+      if (activeTab === 'tables') renderTableFloor();
+      if (activeTab === 'take_order') renderWaiterOrderPad();
+      if (activeTab === 'menu_mgr') renderMenuManager();
+      if (activeTab === 'qr_mgr') renderRestaurantQRTab();
+    }
+
+    function renderLiveQueue(hidePrices) {
+      const openOrders = liveOrders.filter(o => o.status !== 'CLOSED' && o.status !== 'SERVED');
+      $app.innerHTML = `
+        <div class="section-title">Active Orders (${openOrders.length})</div>
+        ${openOrders.map(o => `
+          <div class="card">
+            <div class="row-between">
+              <strong style="font-size:1.05rem;">Table ${o.table_no} ${hidePrices ? '' : `• ₹${o.total}`}</strong>
+              <span class="pill ${o.status}">${o.status}</span>
+            </div>
+            <div class="muted" style="margin:4px 0;">${o.created_at || ''} • ${o.customer_name || 'Guest'}</div>
+            <div style="margin:8px 0; font-size:0.95rem;">
+              ${o.items.map(i => `<div><b>${i.qty}×</b> ${i.name}</div>`).join('')}
+            </div>
+            ${o.note ? `<div style="color:#fbbf24; font-size:0.85rem; margin-bottom:8px;">Note: ${o.note}</div>` : ''}
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              ${o.status === 'NEW' ? `<button class="btn btn-amber btn-sm" data-st="PREPARING" data-oid="${o.id}">Start Cooking</button>` : ''}
+              ${o.status !== 'READY' ? `<button class="btn btn-green btn-sm" data-st="READY" data-oid="${o.id}">Mark Ready</button>` : ''}
+              ${!hidePrices ? `<button class="btn btn-ghost btn-sm" data-st="CLOSED" data-oid="${o.id}">Settle & Close</button>` : ''}
+            </div>
+          </div>
+        `).join('') || '<p class="muted">No active orders in queue.</p>'}
+      `;
+      $app.querySelectorAll('[data-oid]').forEach(b => {
+        b.onclick = () => updateDoc(doc(db, 'restaurants', restId, 'orders', b.dataset.oid), { status: b.dataset.st });
+      });
+    }
+
+    function renderOrderHistory() {
+      const done = liveOrders.filter(o => o.status === 'READY' || o.status === 'SERVED' || o.status === 'CLOSED').slice(0, 25);
+      $app.innerHTML = `
+        <div class="section-title">Recent Completed Orders</div>
+        ${done.map(o => `
+          <div class="card">
+            <div class="row-between"><strong>Table ${o.table_no}</strong><span class="pill ${o.status}">${o.status}</span></div>
+            <div class="muted">${o.items.map(i => `${i.qty}× ${i.name}`).join(', ')}</div>
+          </div>
+        `).join('') || '<p class="muted">No history yet.</p>'}
       `;
     }
 
-    async function fetchOrders(manual) {
-      try {
-        const res = await fetch(`${API_URL}?action=orders&r=${encodeURIComponent(currentRestaurantId)}`);
-        const data = await res.json();
-        if (!data.ok) return;
-        if (!manual && data.orders.length > lastOrderCount && lastOrderCount > 0) playChime();
-        lastOrderCount = data.orders.length;
+    function renderTableFloor() {
+      const count = Number(restaurantData.table_count || 10);
+      let tiles = '';
+      for (let t = 1; t <= count; t++) {
+        const tOrders = liveOrders.filter(o => String(o.table_no) === String(t) && o.status !== 'CLOSED');
+        const hasReady = tOrders.some(o => o.status === 'READY');
+        const cls = hasReady ? 'ready' : (tOrders.length ? 'busy' : '');
+        const label = hasReady ? 'FOOD READY' : (tOrders.length ? `${tOrders.length} Active` : 'Free');
+        tiles += `
+          <div class="table-tile ${cls}" data-tbl="${t}">
+            <div style="font-weight:700; font-size:1rem;">Table ${t}</div>
+            <div class="muted" style="margin-top:4px;">${label}</div>
+          </div>
+        `;
+      }
+      $app.innerHTML = `
+        <div class="section-title">Floor Overview (Tap Table to Take Order)</div>
+        <div class="table-grid">${tiles}</div>
+      `;
+      $app.querySelectorAll('[data-tbl]').forEach(el => {
+        el.onclick = () => {
+          waiterSelectedTable = el.dataset.tbl;
+          if (unlockedRole === 'waiter') { activeTab = 'take_order'; renderStaffWorkspace(); }
+        };
+      });
+    }
 
-        document.getElementById('ordersList').innerHTML = data.orders.map(o => {
-          let parsedItems = [];
-          try { parsedItems = JSON.parse(o.items_json || '[]'); } catch (e) {}
-          const itemsStr = parsedItems.map(i => `${i.name} ×${i.qty}`).join(', ');
-          return `
-            <div class="order-card">
+    function renderWaiterOrderPad() {
+      const available = menuItems.filter(m => m.in_stock !== false);
+      $app.innerHTML = `
+        <div class="card">
+          <div class="row-between">
+            <strong>Manual Order for Table ${waiterSelectedTable}</strong>
+            <select id="wTableSel" style="width:110px; margin:0;">
+              ${Array.from({ length: Number(restaurantData.table_count || 10) }, (_, i) => `
+                <option value="${i+1}" ${String(i+1) === String(waiterSelectedTable) ? 'selected' : ''}>Table ${i+1}</option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+        ${available.map(m => `
+          <div class="card row-between">
+            <div><strong>${m.name}</strong><div class="muted">₹${m.price}</div></div>
+            <button class="btn btn-sm" data-wsend="${m.id}">Send 1× to Kitchen</button>
+          </div>
+        `).join('')}
+      `;
+      document.getElementById('wTableSel').onchange = (e) => { waiterSelectedTable = e.target.value; };
+      $app.querySelectorAll('[data-wsend]').forEach(b => {
+        b.onclick = async () => {
+          const item = menuItems.find(x => x.id === b.dataset.wsend);
+          await addDoc(collection(db, 'restaurants', restId, 'orders'), {
+            table_no: String(waiterSelectedTable),
+            customer_name: 'Waiter Order',
+            note: '',
+            items: [{ name: item.name, qty: 1, price: item.price }],
+            total: item.price,
+            status: 'NEW',
+            created_ms: Date.now(),
+            created_at: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+          });
+          alert(`Sent ${item.name} for Table ${waiterSelectedTable}`);
+        };
+      });
+    }
+
+    function renderMenuManager() {
+      const todayTotal = liveOrders.reduce((s, o) => s + Number(o.total || 0), 0);
+      $app.innerHTML = `
+        <div class="card row-between">
+          <div><div class="muted">Logged Orders Value</div><strong style="font-size:1.2rem;">₹${todayTotal} (${liveOrders.length} orders)</strong></div>
+        </div>
+        <div class="card">
+          <div style="font-weight:700; margin-bottom:8px;">Add New Dish</div>
+          <input id="newDishName" placeholder="Dish Name (e.g., Paneer Tikka)" />
+          <div style="display:flex; gap:8px;">
+            <input id="newDishCat" placeholder="Category (Starters)" />
+            <input id="newDishPrice" type="number" placeholder="Price (180)" />
+          </div>
+          <input id="newDishPhoto" placeholder="Photo URL (WebP/JPG)" />
+          <input id="newDishGlb" placeholder="Optional 3D .glb Model URL" />
+          <div style="display:flex; gap:12px; margin-bottom:10px; font-size:0.85rem;">
+            <label><input type="checkbox" id="newDishVeg" checked style="width:auto; margin:0 4px 0 0;" /> Veg</label>
+            <label><input type="checkbox" id="newDishBest" style="width:auto; margin:0 4px 0 0;" /> 3D Showcase Hero</label>
+          </div>
+          <button class="btn" id="addDishBtn">Save Dish</button>
+        </div>
+
+        <div class="section-title">Manage Stock & Items (${menuItems.length})</div>
+        ${menuItems.map(m => `
+          <div class="card row-between">
+            <div>
+              <strong>${m.name}</strong> • ₹${m.price}
+              <div class="muted">${m.category} ${m.glb_url ? '• 3D Enabled' : ''}</div>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-sm ${m.in_stock !== false ? 'btn-green' : 'btn-amber'}" data-toggle="${m.id}">
+                ${m.in_stock !== false ? 'In Stock' : 'Sold Out'}
+              </button>
+              <button class="btn btn-ghost btn-sm" data-del="${m.id}">Del</button>
+            </div>
+          </div>
+        `).join('')}
+      `;
+
+      document.getElementById('addDishBtn').onclick = async () => {
+        const name = document.getElementById('newDishName').value.trim();
+        const price = Number(document.getElementById('newDishPrice').value || 0);
+        if (!name || !price) return alert('Enter dish name and price');
+        await addDoc(collection(db, 'restaurants', restId, 'menu'), {
+          name,
+          category: document.getElementById('newDishCat').value.trim() || 'Specials',
+          price,
+          photo_url: document.getElementById('newDishPhoto').value.trim(),
+          glb_url: document.getElementById('newDishGlb').value.trim(),
+          veg: document.getElementById('newDishVeg').checked,
+          bestseller: document.getElementById('newDishBest').checked,
+          in_stock: true
+        });
+      };
+
+      $app.querySelectorAll('[data-toggle]').forEach(b => {
+        b.onclick = () => {
+          const item = menuItems.find(x => x.id === b.dataset.toggle);
+          updateDoc(doc(db, 'restaurants', restId, 'menu', item.id), { in_stock: item.in_stock === false });
+        };
+      });
+      $app.querySelectorAll('[data-del]').forEach(b => {
+        b.onclick = () => deleteDoc(doc(db, 'restaurants', restId, 'menu', b.dataset.del));
+      });
+    }
+
+    function renderRestaurantQRTab() {
+      const base = `${location.origin}${location.pathname}`;
+      const count = Number(restaurantData.table_count || 10);
+      $app.innerHTML = `
+        <div class="card">
+          <strong>Staff Panel Link:</strong>
+          <div class="muted" style="word-break:break-all; margin:4px 0 10px;">${base}?r=${restId}&panel=staff</div>
+          <strong>Printable Table QRs (${count} Tables)</strong>
+        </div>
+        <div class="qr-grid" id="mgrQrGrid"></div>
+      `;
+      const grid = document.getElementById('mgrQrGrid');
+      for (let t = 1; t <= count; t++) {
+        const url = `${base}?r=${encodeURIComponent(restId)}&t=${t}`;
+        const box = document.createElement('div');
+        box.className = 'qr-box';
+        box.innerHTML = `<strong>Table ${t}</strong>`;
+        const holder = document.createElement('div');
+        box.appendChild(holder);
+        grid.appendChild(box);
+        new QRCode(holder, { text: url, width: 110, height: 110 });
+      }
+    }
+
+    function renderSuperAdminGate() {
+      $hdrTitle.textContent = 'Super Admin Console';
+      $hdrSub.textContent = 'Multi-Restaurant Control';
+      $app.innerHTML = `
+        <div class="card" style="max-width:400px; margin:24px auto;">
+          <h3>Super Admin Login</h3>
+          <input id="saPin" type="password" inputmode="numeric" placeholder="Enter Super Admin PIN" />
+          <button class="btn" style="width:100%;" id="saLoginBtn">Open Console</button>
+        </div>
+      `;
+      document.getElementById('saLoginBtn').onclick = () => {
+        if (document.getElementById('saPin').value.trim() !== SUPER_ADMIN_PIN) return alert('Wrong PIN');
+        renderSuperAdminDashboard();
+      };
+    }
+
+    function renderSuperAdminDashboard() {
+      const base = `${location.origin}${location.pathname}`;
+      onSnapshot(collection(db, 'restaurants'), (snap) => {
+        const clients = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        $app.innerHTML = `
+          <div class="card">
+            <div style="font-weight:700; margin-bottom:8px;">Onboard New Restaurant</div>
+            <input id="saSlug" placeholder="Slug ID (e.g., spice-hub)" />
+            <input id="saName" placeholder="Restaurant Name" />
+            <div style="display:flex; gap:8px;">
+              <input id="saTables" type="number" value="10" placeholder="Tables" />
+              <input id="saColor" value="#e11d48" placeholder="Hex Color" />
+            </div>
+            <div style="display:flex; gap:8px;">
+              <input id="saMgrPin" value="1111" placeholder="Manager PIN" />
+              <input id="saKitPin" value="2222" placeholder="Kitchen PIN" />
+              <input id="saWtrPin" value="3333" placeholder="Waiter PIN" />
+            </div>
+            <input id="saReview" placeholder="Google Review URL" />
+            <button class="btn" id="createClientBtn">Create Restaurant</button>
+          </div>
+
+          <div class="section-title">Active Clients (${clients.length})</div>
+          ${clients.map(c => `
+            <div class="card">
               <div class="row-between">
-                <strong>Table ${o.table_no} • ₹${o.total}</strong>
-                <span class="status-pill ${o.status}">${o.status}</span>
+                <strong>${c.name} (${c.id})</strong>
+                <button class="btn btn-sm ${c.active !== false ? 'btn-green' : 'btn-amber'}" data-cactive="${c.id}" data-cur="${c.active !== false}">
+                  ${c.active !== false ? 'Active' : 'Suspended'}
+                </button>
               </div>
-              <div class="muted" style="margin-top:4px;">${o.order_id} • ${o.created_at}</div>
-              <div style="margin-top:8px;">${itemsStr}</div>
-              ${o.note ? `<div class="muted" style="margin-top:4px;">Note: ${o.note}</div>` : ''}
-              <div style="display:flex; gap:8px; margin-top:10px;">
-                <button class="btn btn-ghost btn-sm" onclick="setOrderStatus('${o.order_id}'
+              <div class="muted" style="margin:6px 0;">Tables: ${c.table_count || 10} • PINs: M:${c.manager_pin} / K:${c.kitchen_pin} / W:${c.waiter_pin}</div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                <a class="btn btn-ghost btn-sm" style="text-decoration:none;" target="_blank" href="${base}?r=${c.id}&t=1">Open Menu</a>
+                <a class="btn btn-blue btn-sm" style="text-decoration:none;" target="_blank" href="${base}?r=${c.id}&panel=staff">Open Staff Panel</a>
+              </div>
+            </div>
+          `).join('')}
+        `;
+
+        document.getElementById('createClientBtn').onclick = async () => {
+          const id = document.getElementById('saSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+          const name = document.getElementById('saName').value.trim();
+          if (!id || !name) return alert('Slug and Name required');
+
+          await setDoc(doc(db, 'restaurants', id), {
+            name,
+            table_count: Number(document.getElementById('saTables').value || 10),
+            accent_color: document.getElementById('saColor').value.trim() || '#e11d48',
+            manager_pin: document.getElementById('saMgrPin').value.trim() || '1111',
+            kitchen_pin: document.getElementById('saKitPin').value.trim() || '2222',
+            waiter_pin: document.getElementById('saWtrPin').value.trim() || '3333',
+            google_review_url: document.getElementById('saReview').value.trim(),
+            active: true
+          });
+
+          await addDoc(collection(db, 'restaurants', id, 'menu'), {
+            name: 'House Special Combo',
+            category: 'Specials',
+            price: 199,
+            veg: true,
+            bestseller: false,
+            in_stock: true,
+            photo_url: '',
+            glb_url: ''
+          });
+
+          alert(`Created ${name} with starter menu item!`);
+        };
+
+        $app.querySelectorAll('[data-cactive]').forEach(b => {
+          b.onclick = () => {
+            const cur = b.dataset.cur === 'true';
+            updateDoc(doc(db, 'restaurants', b.dataset.cactive), { active: !cur });
+          };
+        });
+      });
+    }
+
+    boot();
+  </script>
+</body>
+</html>
