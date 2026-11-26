@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartMenu 3D • Digital Dining & AI Menu Builder</title>
+  <meta name="theme-color" content="#e11d48" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Interactive 3D Model Viewer -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+  
+  <!-- Client-side QR Code Generator -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --accent: #e11d48;
+      --bg: #0b0d12;
+      --card: #151922;
+      --card-2: #1f2430;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #2a303d;
+    }
+    body.light-theme {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --card-2: #f1f5f9;
+      --text: #0f172a;
+      --muted: #475569;
+      --border: #e2e8f0;
+    }
+    * {
+      box-sizing: border-box;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      transition: background-color 0.2s, color 0.2s;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    model-viewer {
+      width: 100%;
+      height: 245px;
+      border-radius: 0.75rem;
+      background: radial-gradient(circle at center, #1e2536 0%, #080a0e 100%);
+      --poster-color: transparent;
+    }
+    .theme-card {
+      background-color: var(--card);
+      border-color: var(--border);
+    }
+    .theme-card-2 {
+      background-color: var(--card-2);
+      border-color: var(--border);
+    }
+    .theme-muted {
+      color: var(--muted);
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printableQrArea, #printableQrArea * {
+        visibility: visible;
+      }
+      #printableQrArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white !important;
+        color: black !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-28">
+
+  <!-- Top Sticky Header (Strictly isolated: NO Quick Switch bar for customers) -->
+  <header class="sticky top-0 z-30 theme-card border-b px-4 py-3 backdrop-blur-md">
+    <div class="max-w-5xl mx-auto flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <h1 id="hdrTitle" class="text-base sm:text-lg font-extrabold tracking-tight truncate select-none cursor-default">SmartMenu 3D</h1>
+        <p id="hdrSub" class="text-xs theme-muted truncate">Scan • Explore • Order</p>
+      </div>
+      <div id="hdrActions" class="flex items-center gap-2 shrink-0"></div>
+    </div>
+  </header>
+
+  <!-- Non-Blocking Toast Banner (Replaces alert/confirm everywhere) -->
+  <div id="toastBanner" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 hidden max-w-sm w-[92%] bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2.5">
+      <span id="toastDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span>
+      <p id="toastText" class="text-sm font-medium"></p>
+    </div>
+    <button id="toastCloseBtn" class="text-slate-400 hover:text-white text-xs font-semibold px-2 py-1">OK</button>
+  </div>
+
+  <!-- Main Dynamic Application Container -->
+  <main id="app" class="max-w-5xl mx-auto px-4 pt-4">
+    <div class="theme-card border rounded-2xl p-6 text-center">
+      <div class="inline-block w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+      <p class="text-sm theme-muted">Loading menu...</p>
+    </div>
+  </main>
+
+  <!-- Customer Floating Cart Bar -->
+  <div id="cartBar" class="fixed bottom-0 inset-x-0 z-30 hidden theme-card border-t px-4 py-3 shadow-2xl">
+    <div class="max-w-5xl mx-auto flex items-center justify-between gap-4">
+      <div>
+        <div id="cartSummary" class="text-sm sm:text-base font-extrabold">0 items • ₹0</div>
+        <div class="text-xs theme-muted">Tap to review & send order</div>
+      </div>
+      <button id="openCartBtn" class="px-5 py-2.5 rounded-xl font-bold text-sm text-white shadow-lg transition active:scale-95" style="background: var(--accent);">
+        Review Order
+      </button>
+    </div>
+  </div>
+
+  <!-- Customer Cart Modal -->
+  <div id="cartModal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-xs items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="theme-card border rounded-t-3xl sm:rounded-3xl w-full max-w-lg p-5 max-h-[88vh] overflow-y-auto shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b" style="border-color: var(--border);">
+        <div>
+          <h3 class="text-lg font-bold">Your Table Order</h3>
+          <p id="modalTableSub" class="text-xs theme-muted">Table 1</p>
+        </div>
+        <button id="closeCartBtn" class="px-3 py-1.5 rounded-xl theme-card-2 border text-xs font-semibold">Close</button>
+      </div>
+      <div id="cartList" class="divide-y" style="border-color: var(--border);"></div>
+      <div class="mt-4 space-y-3">
+        <div>
+          <label class="block text-xs font-medium theme-muted mb-1">Your Name (Optional)</label>
+          <input id="guestName" type="text" placeholder="e.g., Kiran" class="w-full px-3.5 py-2.5 rounded-xl theme-card-2 border text-sm focus:outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium theme-muted mb-1">Special Request / Spice Level (Optional)</label>
+          <textarea id="orderNote" rows="2" placeholder="Less spicy, extra raita, serve hot..." class="w-full px-3.5 py-2.5 rounded-xl theme-card-2 border text-sm focus:outline-none"></textarea>
+        </div>
+        <button id="submitOrderBtn" class="w-full py-3 rounded-xl font-bold text-sm text-white shadow-lg transition active:scale-95" style="background: var(--accent);">
+          Send Order to Kitchen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Customer Table Service & Finishing Touches Modal -->
+  <div id="serviceModal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-xs items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="theme-card border rounded-t-3xl sm:rounded-3xl w-full max-w-lg p-5 max-h-[88vh] overflow-y-auto shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b" style="border-color: var(--border);">
+        <h3 class="text-lg font-bold">Table Service & Finishing Touches</h3>
+        <button id="closeServiceBtn" class="px-3 py-1.5 rounded-xl theme-card-2 border text-xs font-semibold">Close</button>
+      </div>
+      <p class="text-xs theme-muted mt-2 mb-3">Tap any item below to notify your table waiter immediately, or type a custom request:</p>
+      <div id="modalServiceGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+      <div class="mt-4 space-y-2.5">
+        <label class="block text-xs font-medium theme-muted">Anything else you need at your table?</label>
+        <input id="customServiceInput" type="text" placeholder="e.g., Extra plates, baby chair, parcel box, finger bowl..." class="w-full px-3.5 py-2.5 rounded-xl theme-card-2 border text-sm focus:outline-none" />
+        <button id="sendCustomServiceBtn" class="w-full py-3 rounded-xl font-bold text-sm text-white shadow-lg" style="background: var(--accent);">
+          Send Request to Waiter
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Customer 3D Dish Preview Modal -->
+  <div id="preview3DModal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-xs items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="theme-card border rounded-t-3xl sm:rounded-3xl w-full max-w-lg p-5 max-h-[88vh] overflow-y-auto shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b" style="border-color: var(--border);">
+        <h3 id="modal3DTitle" class="text-base font-bold">3D Dish View</h3>
+        <button id="close3DBtn" class="px-3 py-1.5 rounded-xl theme-card-2 border text-xs font-semibold">Close</button>
+      </div>
+      <div id="modal3DBody" class="mt-3"></div>
+    </div>
+  </div>
+
+  <!-- Staff Role Bottom Tabs (Rendered ONLY in panel=staff) -->
+  <nav id="bottomNav" class="fixed bottom-0 inset-x-0 z-30 hidden theme-card border-t px-2 py-2">
+    <div id="bottomNavInner" class="max-w-5xl mx-auto flex items-center justify-around gap-1"></div>
+  </nav>
+
+  <!-- Inline Self-Contained PWA Manifest & Service Worker -->
+  <script>
+    (function setupInlinePWA() {
+      try {
+        const manifest = {
+          name: "SmartMenu 3D Dining",
+          short_name: "SmartMenu",
+          start_url: location.href,
+          display: "standalone",
+          background_color: "#0b0d12",
+          theme_color: "#e11d48",
+          icons: [{
+            src: "https://cdn-icons-png.flaticon.com/512/3448/3448609.png",
+            sizes: "512x512",
+            type: "image/png"
+          }]
+        };
+        const mBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = URL.createObjectURL(mBlob);
+        document.head.appendChild(link);
+
+        if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+          const swCode = `
+            self.addEventListener('install', e => self.skipWaiting());
+            self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+            self.addEventListener('fetch', e => {
+              if (e.request.method !== 'GET') return;
+              e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+            });
+          `;
+          const swBlob = new Blob([swCode], { type: 'application/javascript' });
+          navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- Application Logic & Firebase Firestore Realtime Sync -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import {
+      getFirestore, collection, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc,
+      onSnapshot, query, orderBy
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDvC0eAyXeDj8-Erj16jGV1hQSR5H0WsSw",
+      authDomain: "restoqr-b9d9c.firebaseapp.com",
+      projectId: "restoqr-b9d9c",
+      storageBucket: "restoqr-b9d9c.firebasestorage.app",
+      messagingSenderId: "467335839268",
+      appId: "1:467335839268:web:7d302fb5387181efcda2b1"
+    };
+
+    // Change this to your private Super Admin PIN before going live
+    const SUPER_ADMIN_PIN = '9999';
+
+    // Curated 3D Preset Library for the 1-Tap 3D Dish Studio
+    // Upload matching .glb files to byte-standard/RestoQR/models/presets/ on GitHub for instant 1-tap assignment
+    const PRESET_CDN_BASE = 'https://cdn.jsdelivr.net/gh/byte-standard/RestoQR@main/models/presets/';
+    const VERIFIED_FALLBACK_GLB = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/glTF-Binary/Avocado.glb';
+
+    const PRESET_3D_MODELS = [
+      { id: 'burger', label: '🍔 Signature Burger (3D)', url: PRESET_CDN_BASE + 'burger.glb' },
+      { id: 'biryani', label: '🍲 Biryani Handi (3D)', url: PRESET_CDN_BASE + 'biryani.glb' },
+      { id: 'pizza', label: '🍕 Woodfire Pizza (3D)', url: PRESET_CDN_BASE + 'pizza.glb' },
+      { id: 'tandoori', label: '🍗 Tandoori Platter (3D)', url: PRESET_CDN_BASE + 'tandoori.glb' },
+      { id: 'dosa', label: '🥞 Crispy Masala Dosa (3D)', url: PRESET_CDN_BASE + 'dosa.glb' },
+      { id: 'thali', label: '🍛 Royal Veg Thali (3D)', url: PRESET_CDN_BASE + 'thali.glb' },
+      { id: 'shake', label: '🥤 Thickshake / Frappe (3D)', url: PRESET_CDN_BASE + 'shake.glb' },
+      { id: 'dessert', label: '🍨 Gulab Jamun / Dessert (3D)', url: PRESET_CDN_BASE + 'dessert.glb' },
+      { id: 'demo_avocado', label: '🥑 Verified Demo 3D Model (Instant Test)', url: VERIFIED_FALLBACK_GLB }
+    ];
+
+    // Clean 2D Photo & Veg/Non-Veg Auto-Matcher (NO fake/placeholder .glb attached automatically!)
+    const SMART_PHOTO_LIBRARY = [
+      {
+        keys: ['burger', 'zinger', 'patty', 'slider', 'sandwich'],
+        photo: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500',
+        veg: true
+      },
+      {
+        keys: ['biryani', 'pulao', 'mandi', 'rice', 'fried rice', 'jeera'],
+        photo: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500',
+        veg: false
+      },
+      {
+        keys: ['pizza', 'margherita', 'farmhouse', 'pepperoni'],
+        photo: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500',
+        veg: true
+      },
+      {
+        keys: ['paneer', 'tikka', 'butter masala', 'kadai', 'dal', 'curd', 'thali', 'salad', 'palak', 'aloo', 'gobi'],
+        photo: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=500',
+        veg: true
+      },
+      {
+        keys: ['chicken', 'mutton', 'kebab', 'tandoori', 'fish', 'prawns', 'egg', 'shawarma', 'keema'],
+        photo: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=500',
+        veg: false
+      },
+      {
+        keys: ['dosa', 'idli', 'vada', 'uttapam', 'poori', 'upma', 'tiffin', 'pongal'],
+        photo: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=500',
+        veg: true
+      },
+      {
+        keys: ['coffee', 'tea', 'chai', 'shake', 'juice', 'lassi', 'mojito', 'cold', 'water', 'soda'],
+        photo: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=500',
+        veg: true
+      },
+      {
+        keys: ['noodles', 'manchurian', 'momos', 'pasta', 'rolls', 'fries', 'spring roll'],
+        photo: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?w=500',
+        veg: true
+      },
+      {
+        keys: ['ice cream', 'gulab', 'jamun', 'brownie', 'dessert', 'sweet', 'cake', 'halwa', 'rasmalai'],
+        photo: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=500',
+        veg: true
+      }
+    ];
+
+    function autoMatchPhotoAndVeg(dishName) {
+      const lower = (dishName || '').toLowerCase();
+      const isNonVegKeyword = ['chicken', 'mutton', 'fish', 'prawn', 'egg', 'beef', 'keema', 'non-veg', 'non veg'].some(w => lower.includes(w));
+      for (const entry of SMART_PHOTO_LIBRARY) {
+        if (entry.keys.some(k => lower.includes(k))) {
+          return {
+            photo: entry.photo,
+            veg: isNonVegKeyword ? false : entry.veg
+          };
+        }
+      }
+      return {
+        photo: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
+        veg: !isNonVegKeyword
+      };
+    }
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const params = new URLSearchParams(location.search);
+    const restId = (params.get('r') || 'demo-cafe').trim();
+    const tableNo = (params.get('t') || '1').trim();
+    const panelMode = (params.get('panel') || 'customer').trim(); // customer | staff | superadmin
+
+    let restaurantData = null;
+    let menuItems = [];
+    let liveOrders = [];
+    let cart = {};
+    let selectedCat = 'All';
+    let vegOnly = false;
+    let searchTerm = '';
+    let heroIdx = 0;
+
+    let unlockedRole = sessionStorage.getItem(`role_${restId}`) || null;
+    let activeTab = 'queue';
+    let waiterSelectedTable = '1';
+    let lastKnownOrderCount = -1;
+    let aiScannedItems = [];
+    let pendingDeleteDishId = null;
+
+    const $app = document.getElementById('app');
+    const $hdrTitle = document.getElementById('hdrTitle');
+    const $hdrSub = document.getElementById('hdrSub');
+    const $hdrActions = document.getElementById('hdrActions');
+    const $bottomNav = document.getElementById('bottomNav');
+    const $bottomNavInner = document.getElementById('bottomNavInner');
+
+    // Non-blocking Toast Notification Helper
+    let toastTimer = null;
+    function showToast(msg, type = 'success') {
+      const banner = document.getElementById('toastBanner');
+      const dot = document.getElementById('toastDot');
+      const text = document.getElementById('toastText');
+      text.textContent = msg;
+      dot.className = `w-2.5 h-2.5 rounded-full shrink-0 ${
+        type === 'error' ? 'bg-rose-500' : type === 'warn' ? 'bg-amber-400' : 'bg-emerald-400'
+      }`;
+      banner.classList.remove('hidden');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => banner.classList.add('hidden'), 3600);
+    }
+    document.getElementById('toastCloseBtn').onclick = () => document.getElementById('toastBanner').classList.add('hidden');
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Hidden 4.5-second press-and-hold on the restaurant header title for staff recovery
+    let pressTimer = null;
+    $hdrTitle.addEventListener('pointerdown', () => {
+      if (panelMode !== 'customer') return;
+      pressTimer = setTimeout(() => {
+        location.href = `${location.pathname}?r=${encodeURIComponent(restId)}&panel=staff`;
+      }, 4500);
+    });
+    $hdrTitle.addEventListener('pointerup', () => clearTimeout(pressTimer));
+    $hdrTitle.addEventListener('pointerleave', () => clearTimeout(pressTimer));
+
+    function showError(err) {
+      $app.innerHTML = `
+        <div class="theme-card border border-rose-500/60 rounded-2xl p-5">
+          <h3 class="text-base font-bold text-rose-400">Connection / Setup Notice</h3>
+          <p class="text-sm theme-muted mt-1.5">${escapeHtml(err?.message || String(err))}</p>
+        </div>
+      `;
+    }
+
+    function setAccent(hex) {
+      if (hex) document.documentElement.style.setProperty('--accent', hex);
+    }
+
+    function playBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = 880;
+        osc.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.22);
+      } catch (e) {}
+    }
+
+    async function ensureDemoExists() {
+      if (restId !== 'demo-cafe') return;
+      const ref = doc(db, 'restaurants', 'demo-cafe');
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        await setDoc(ref, {
+          name: 'Royal Spice Cafe (Demo)',
+          accent_color: '#e11d48',
+          table_count: 10,
+          active: true,
+          manager_pin: '1111',
+          kitchen_pin: '2222',
+          waiter_pin: '3333',
+          google_review_url: 'https://google.com'
+        });
+        const sampleDishes = [
+          {
+            name: 'Signature Avocado & Masala Burger',
+            description: 'Crispy spiced patty, fresh avocado, melted cheese & mint mayo',
+            category: 'Burgers',
+            price: 149,
+            veg: true,
+            bestseller: true,
+            in_stock: true,
+            photo_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500',
+            glb_url: VERIFIED_FALLBACK_GLB
+          },
+          {
+            name: 'Hyderabadi Dum Biryani',
+            description: 'Aromatic basmati rice slow-cooked with mirchi ka salan & raita',
+            category: 'Main Course',
+            price: 220,
+            veg: false,
+            bestseller: true,
+            in_stock: true,
+            photo_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500',
+            glb_url: ''
+          },
+          {
+            name: 'Cold Coffee Frappe',
+            description: 'Chilled blended espresso topped with chocolate drizzle',
+            category: 'Beverages',
+            price: 99,
+            veg: true,
+            bestseller: false,
+            in_stock: true,
+            photo_url: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=500',
+            glb_url: ''
+          }
+        ];
+        for (const d of sampleDishes) {
+          await addDoc(collection(db, 'restaurants', 'demo-cafe', 'menu'), d);
+        }
+      }
+    }
+
+    async function boot() {
+      try {
+        if (panelMode === 'superadmin') {
+          renderSuperAdminGate();
+          return;
+        }
+
+        await ensureDemoExists();
+
+        const restSnap = await getDoc(doc(db, 'restaurants', restId));
+        if (!restSnap.exists()) {
+          $app.innerHTML = `
+            <div class="theme-card border rounded-2xl p-6 text-center">
+              <h3 class="text-lg font-bold">Restaurant Not Found</h3>
+              <p class="text-sm theme-muted mt-1">Please scan a valid table QR code.</p>
+            </div>
+          `;
+          return;
+        }
+        restaurantData = { id: restSnap.id, ...restSnap.data() };
+        setAccent(restaurantData.accent_color);
+
+        if (restaurantData.active === false && panelMode === 'customer') {
+          $hdrTitle.textContent = restaurantData.name;
+          $app.innerHTML = `
+            <div class="theme-card border rounded-2xl p-6 text-center">
+              <h3 class="text-lg font-bold">Menu Temporarily Unavailable</h3>
+              <p class="text-sm theme-muted mt-1">Please ask staff for assistance.</p>
+            </div>
+          `;
+          return;
+        }
+
+        onSnapshot(collection(db, 'restaurants', restId, 'menu'), (snap) => {
+          menuItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (panelMode === 'customer') renderCustomerMenu();
+          if (panelMode === 'staff' && unlockedRole) renderStaffWorkspace();
+        }, showError);
+
+        const qOrders = query(collection(db, 'restaurants', restId, 'orders'), orderBy('created_ms', 'desc'));
+        onSnapshot(qOrders, (snap) => {
+          const incoming = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (panelMode === 'staff' && unlockedRole && lastKnownOrderCount !== -1 && incoming.length > lastKnownOrderCount) {
+            playBeep();
+            showToast('New order / table request arrived!', 'warn');
+          }
+          lastKnownOrderCount = incoming.length;
+          liveOrders = incoming;
+          if (panelMode === 'customer') renderCustomerMenu();
+          if (panelMode === 'staff' && unlockedRole) renderStaffWorkspace();
+        }, showError);
+
+        if (panelMode === 'staff') {
+          if (!unlockedRole) renderStaffPinGate();
+          else renderStaffWorkspace();
+        } else {
+          renderCustomerMenu();
+        }
+      } catch (err) {
+        showError(err);
+      }
+    }
+
+    // ================= 1. STRICTLY ISOLATED CUSTOMER UI/UX =================
+    const TABLE_QUICK_REQUESTS = [
+      { label: '💧 Water Bottle', item: 'Water Bottle', isBill: false },
+      { label: '🥣 Extra Curd / Raita', item: 'Extra Curd / Raita', isBill: false },
+      { label: '🍋 Finger Bowl', item: 'Finger Bowl', isBill: false },
+      { label: '🍨 Sweet / Dessert', item: 'Sweet / Paan', isBill: false },
+      { label: '🍲 Hot Soup', item: 'Hot Soup', isBill: false },
+      { label: '🙋 Call Waiter', item: 'Waiter Assistance', isBill: false },
+      { label: '🧾 Bring Bill', item: 'Bring Final Bill', isBill: true }
+    ];
+
+    function renderCustomerMenu() {
+      // Strictly hide staff navigation in customer mode
+      $bottomNav.classList.add('hidden');
+      $bottomNavInner.innerHTML = '';
+
+      $hdrTitle.textContent = restaurantData.name;
+      $hdrSub.textContent = 'Digital Table Menu';
+      const isLight = document.body.classList.contains('light-theme');
+      $hdrActions.innerHTML = `
+        <span class="px-2.5 py-1 rounded-full theme-card-2 border text-xs font-bold">Table ${escapeHtml(tableNo)}</span>
+        <button id="themeToggleBtn" class="px-2.5 py-1.5 rounded-xl theme-card-2 border text-xs font-semibold" title="Switch Theme">${isLight ? '🌙' : '☀️'}</button>
+        <button id="openServiceBtn" class="px-3 py-1.5 rounded-xl theme-card-2 border text-xs font-bold">Table Help</button>
+      `;
+
+      document.getElementById('themeToggleBtn').onclick = () => {
+        document.body.classList.toggle('light-theme');
+        renderCustomerMenu();
+      };
+      document.getElementById('openServiceBtn').onclick = () => openServiceModal();
+
+      const tableOrders = liveOrders.filter(o => String(o.table_no) === String(tableNo));
+      const openOrders = tableOrders.filter(o => o.status !== 'CLOSED');
+      const allFinished = tableOrders.length > 0 && openOrders.length === 0;
+      const anyReadyOrServed = openOrders.some(o => o.status === 'READY' || o.status === 'SERVED');
+
+      // 1) Live 3-Step Order Progress Card
+      let trackerHtml = '';
+      if (openOrders.length) {
+        const latest = openOrders[0];
+        const st = latest.status;
+        const s1 = 'bg-emerald-500/20 text-emerald-400 border-emerald-500';
+        const s2 = (st === 'PREPARING' || st === 'READY' || st === 'SERVED')
+          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500'
+          : 'bg-blue-500/25 text-blue-400 border-blue-500';
+        const s3 = (st === 'READY' || st === 'SERVED')
+          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500'
+          : (st === 'PREPARING' ? 'bg-blue-500/25 text-blue-400 border-blue-500' : 'theme-card-2 theme-muted');
+        const tableRunningTotal = openOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+
+        trackerHtml = `
+          <div class="theme-card border-2 border-blue-500 rounded-2xl p-4 mb-4 shadow-lg">
+            <div class="flex items-center justify-between gap-2">
+              <strong class="text-sm font-bold">Table ${escapeHtml(tableNo)} Live Order</strong>
+              <span class="text-xs theme-muted">Running Bill: <strong class="text-sm">₹${tableRunningTotal}</strong></span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5 my-2.5">
+              <div class="text-center py-1.5 px-1 rounded-lg text-[11px] font-bold border ${s1}">1. Sent</div>
+              <div class="text-center py-1.5 px-1 rounded-lg text-[11px] font-bold border ${s2}">2. Cooking</div>
+              <div class="text-center py-1.5 px-1 rounded-lg text-[11px] font-bold border ${s3}">3. Ready / Served</div>
+            </div>
+            <div class="text-xs theme-muted">
+              Latest: ${latest.items.map(i => `${escapeHtml(i.name)} ×${i.qty}`).join(', ')}
+            </div>
+          </div>
+        `;
+      }
+
+      // 2) 1-Tap Table Concierge & Finishing Touches Strip
+      const conciergeHtml = `
+        <div class="theme-card border rounded-2xl p-4 mb-4">
+          <div class="flex items-center justify-between gap-2 mb-2.5">
+            <strong class="text-sm font-bold">Need Anything at Table ${escapeHtml(tableNo)}?</strong>
+            <span class="text-[11px] theme-muted">1-Tap Waiter Alert</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            ${TABLE_QUICK_REQUESTS.map((req, idx) => `
+              <button data-qreq="${idx}" class="px-2.5 py-2.5 rounded-xl theme-card-2 border text-xs font-semibold text-center transition active:scale-95 ${
+                req.isBill ? 'border-amber-500/70 text-amber-400' : ''
+              }">
+                ${req.label}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      // 3) Post-Meal Google Review Card
+      let reviewHtml = '';
+      if ((allFinished || anyReadyOrServed) && restaurantData.google_review_url) {
+        reviewHtml = `
+          <div class="bg-gradient-to-r from-emerald-500/20 to-blue-500/20 border border-emerald-500/50 rounded-2xl p-4 mb-4 text-center">
+            <div class="font-extrabold text-base">Finished Your Meal?</div>
+            <div class="text-xs theme-muted mt-1 mb-3">Your feedback helps ${escapeHtml(restaurantData.name)} serve you even better!</div>
+            <a href="${escapeHtml(restaurantData.google_review_url)}" target="_blank" rel="noopener" class="inline-block px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow">
+              ⭐ Rate Your Experience on Google
+            </a>
+          </div>
+        `;
+      }
+
+      // 4) 3D Signature Dish Showcase (Only dishes with a real glb_url attached!)
+      const availableMenu = menuItems.filter(m => m.in_stock !== false);
+      const heroes = availableMenu.filter(m => Boolean(m.glb_url));
+      if (heroIdx >= heroes.length) heroIdx = 0;
+      const hero = heroes[heroIdx];
+
+      const heroHtml = hero ? `
+        <section class="mb-5">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-xs font-bold uppercase tracking-wider theme-muted">3D Signature Dish (Drag to Rotate)</h2>
+            <span class="text-[11px] text-sky-400 font-semibold">${heroes.length} 3D item${heroes.length > 1 ? 's' : ''}</span>
+          </div>
+          <div class="bg-gradient-to-br from-[#1b202c] to-[#11141b] text-white border border-slate-800 rounded-2xl p-3.5 shadow-xl">
+            <model-viewer src="${escapeHtml(hero.glb_url)}" alt="${escapeHtml(hero.name)}" camera-controls auto-rotate shadow-intensity="1" ar></model-viewer>
+            <div class="flex items-center justify-between gap-3 mt-3 pt-2.5 border-t border-slate-800">
+              <div class="min-w-0">
+                <div class="font-bold text-sm sm:text-base truncate">${escapeHtml(hero.name)} • ₹${hero.price}</div>
+                <div class="text-xs text-slate-400 truncate">${escapeHtml(hero.description || hero.category)}</div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                ${heroes.length > 1 ? `<button id="nextHeroBtn" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white">Next 3D</button>` : ''}
+                <button data-add="${hero.id}" class="px-4 py-2 rounded-xl text-xs font-bold text-white shadow" style="background: var(--accent);">+ Add</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      ` : '';
+
+      // 5) Search + Category Filters + Menu Cards
+      const cats = ['All', ...new Set(availableMenu.map(i => i.category).filter(Boolean))];
+      const qLower = searchTerm.toLowerCase();
+      const filtered = availableMenu.filter(i => {
+        const catOk = selectedCat === 'All' || i.category === selectedCat;
+        const vegOk = !vegOnly || i.veg;
+        const searchOk = !qLower || i.name.toLowerCase().includes(qLower) || (i.description || '').toLowerCase().includes(qLower);
+        return catOk && vegOk && searchOk;
+      });
+
+      $app.innerHTML = `
+        ${reviewHtml}
+        ${trackerHtml}
+        ${conciergeHtml}
+        ${heroHtml}
+        <section>
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-xs font-bold uppercase tracking-wider theme-muted">Explore Menu</h2>
+            <span class="text-xs theme-muted">${filtered.length} dishes</span>
+          </div>
+          <input id="menuSearchInput" type="text" placeholder="Search dishes (e.g., biryani, burger, coffee)..." value="${escapeHtml(searchTerm)}" class="w-full px-3.5 py-2.5 rounded-xl theme-card border text-sm mb-2.5 focus:outline-none" />
+          <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
+            <button id="vegChip" class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold border transition ${
+              vegOnly ? 'bg-emerald-600 border-emerald-500 text-white' : 'theme-card theme-muted'
+            }">
+              🟢 Veg Only
+            </button>
+            ${cats.map(c => `
+              <button data-cat="${escapeHtml(c)}" class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold border transition ${
+                selectedCat === c ? 'text-white border-transparent' : 'theme-card theme-muted'
+              }" style="${selectedCat === c ? 'background: var(--accent);' : ''}">
+                ${escapeHtml(c)}
+              </button>
+            `).join('')}
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-3">
+            ${filtered.map(item => {
+              const q = cart[item.id]?.qty || 0;
+              return `
+                <div class="theme-card border rounded-2xl p-3.5 flex flex-col justify-between gap-2.5 relative">
+                  <div>
+                    ${item.glb_url ? `<button data-view3d="${item.id}" class="absolute top-5 right-5 bg-slate-900/90 text-sky-400 border border-sky-400/50 px-2.5 py-1 rounded-full text-[11px] font-extrabold shadow">3D View</button>` : ''}
+                    ${item.photo_url ? `
+                      <img
+                        src="${escapeHtml(item.photo_url)}"
+                        alt="${escapeHtml(item.name)}"
+                        loading="lazy"
+                        onerror="this.src='https://placehold.co/400x260/1f2430/94a3b8?text=${encodeURIComponent(item.name)}'"
+                        class="w-full h-36 object-cover rounded-xl theme-card-2 mb-2.5"
+                      />` : ''}
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold ${item.veg ? 'text-emerald-400' : 'text-rose-400'}">
+                        <span class="w-2.5 h-2.5 rounded-full inline-block ${item.veg ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                        ${escapeHtml(item.category)}
+                      </span>
+                      ${item.bestseller ? `<span class="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md text-[10px] font-bold">Bestseller</span>` : ''}
+                    </div>
+                    <div class="font-bold text-sm sm:text-base mt-1">${escapeHtml(item.name)}</div>
+                    ${item.description ? `<div class="text-xs theme-muted mt-0.5">${escapeHtml(item.description)}</div>` : ''}
+                  </div>
+
+                  <div class="flex items-center justify-between pt-2 border-t" style="border-color: var(--border);">
+                    <strong class="text-base font-extrabold">₹${item.price}</strong>
+                    ${q === 0
+                      ? `<button data-add="${item.id}" class="px-4 py-1.5 rounded-xl text-xs font-bold text-white shadow transition active:scale-95" style="background: var(--accent);">+ Add</button>`
+                      : `<div class="flex items-center gap-2 theme-card-2 border rounded-xl p-1">
+                           <button data-dec="${item.id}" class="w-7 h-7 rounded-lg bg-slate-800 text-white font-bold text-sm">-</button>
+                           <strong class="text-xs px-1.5">${q}</strong>
+                           <button data-add="${item.id}" class="w-7 h-7 rounded-lg text-white font-bold text-sm" style="background: var(--accent);">+</button>
+                         </div>`
+                    }
+                  </div>
+                </div>
+              `;
+            }).join('') || '<p class="text-sm theme-muted col-span-full py-6 text-center">No matching dishes found.</p>'}
+          </div>
+        </section>
+      `;
+
+      const searchEl = document.getElementById('menuSearchInput');
+      searchEl.oninput = (e) => {
+        searchTerm = e.target.value;
+        const pos = searchEl.selectionStart;
+        renderCustomerMenu();
+        const nextEl = document.getElementById('menuSearchInput');
+        nextEl.focus();
+        nextEl.setSelectionRange(pos, pos);
+      };
+
+      if (document.getElementById('nextHeroBtn')) {
+        document.getElementById('nextHeroBtn').onclick = () => { heroIdx = (heroIdx + 1) % heroes.length; renderCustomerMenu(); };
+      }
+      document.getElementById('vegChip').onclick = () => { vegOnly = !vegOnly; renderCustomerMenu(); };
+      document.querySelectorAll('[data-cat]').forEach(el => el.onclick = () => { selectedCat = el.dataset.cat; renderCustomerMenu(); });
+      document.querySelectorAll('[data-add]').forEach(el => el.onclick = () => updateCart(el.dataset.add, 1));
+      document.querySelectorAll('[data-dec]').forEach(el => el.onclick = () => updateCart(el.dataset.dec, -1));
+      document.querySelectorAll('[data-qreq]').forEach(el => {
+        el.onclick = () => {
+          const req = TABLE_QUICK_REQUESTS[Number(el.dataset.qreq)];
+          triggerServiceCall(req.item);
+        };
+      });
+      document.querySelectorAll('[data-view3d]').forEach(el => {
+        el.onclick = () => open3DPreviewModal(el.dataset.view3d);
+      });
+
+      refreshCartBar();
+    }
+
+    function open3DPreviewModal(itemId) {
+      const item = menuItems.find(m => m.id === itemId);
+      if (!item || !item.glb_url) return;
+      document.getElementById('modal3DTitle').textContent = `${item.name} • ₹${item.price}`;
+      document.getElementById('modal3DBody').innerHTML = `
+        <model-viewer src="${escapeHtml(item.glb_url)}" alt="${escapeHtml(item.name)}" camera-controls auto-rotate shadow-intensity="1" ar style="height:280px;"></model-viewer>
+        <p class="text-xs theme-muted my-3">${escapeHtml(item.description || 'Drag with one finger to rotate 360°.')}</p>
+        <button id="modal3DAddBtn" class="w-full py-3 rounded-xl font-bold text-sm text-white shadow" style="background: var(--accent);">+ Add to Order (₹${item.price})</button>
+      `;
+      document.getElementById('modal3DAddBtn').onclick = () => {
+        updateCart(item.id, 1);
+        closeModal('preview3DModal');
+      };
+      openModal('preview3DModal');
+    }
+    document.getElementById('close3DBtn').onclick = () => closeModal('preview3DModal');
+
+    function openServiceModal() {
+      const grid = document.getElementById('modalServiceGrid');
+      grid.innerHTML = TABLE_QUICK_REQUESTS.map((req, idx) => `
+        <button data-mreq="${idx}" class="px-2.5 py-2.5 rounded-xl theme-card-2 border text-xs font-semibold text-center ${
+          req.isBill ? 'border-amber-500/70 text-amber-400' : ''
+        }">
+          ${req.label}
+        </button>
+      `).join('');
+      grid.querySelectorAll('[data-mreq]').forEach(btn => {
+        btn.onclick = () => {
+          const req = TABLE_QUICK_REQUESTS[Number(btn.dataset.mreq)];
+          closeModal('serviceModal');
+          triggerServiceCall(req.item);
+        };
+      });
+      openModal('serviceModal');
+    }
+    document.getElementById('closeServiceBtn').onclick = () => closeModal('serviceModal');
+    document.getElementById('sendCustomServiceBtn').onclick = () => {
+      const txt = document.getElementById('customServiceInput').value.trim();
+      if (!txt) return showToast('Type what you need at your table', 'error');
+      document.getElementById('customServiceInput').value = '';
+      closeModal('serviceModal');
+      triggerServiceCall(txt);
+    };
+
+    function openModal(id) {
+      const el = document.getElementById(id);
+      el.classList.remove('hidden');
+      el.classList.add('flex');
+    }
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      el.classList.add('hidden');
+      el.classList.remove('flex');
+    }
+
+    function updateCart(id, delta) {
+      const item = menuItems.find(m => m.id === id);
+      if (!item) return;
+      if (!cart[id]) cart[id] = { ...item, qty: 0 };
+      cart[id].qty += delta;
+      if (cart[id].qty <= 0) delete cart[id];
+      renderCustomerMenu();
+      if (!document.getElementById('cartModal').classList.contains('hidden')) renderCartModal();
+    }
+
+    function refreshCartBar() {
+      const list = Object.values(cart);
+      const count = list.reduce((s, i) => s + i.qty, 0);
+      const total = list.reduce((s, i) => s + i.qty * i.price, 0);
+      const bar = document.getElementById('cartBar');
+      if (count > 0 && panelMode === 'customer') {
+        bar.classList.remove('hidden');
+        document.getElementById('cartSummary').textContent = `${count} items • ₹${total}`;
+      } else {
+        bar.classList.add('hidden');
+      }
+    }
+
+    function renderCartModal() {
+      document.getElementById('modalTableSub').textContent = `Table ${tableNo} • ${restaurantData.name}`;
+      const list = Object.values(cart);
+      const total = list.reduce((s, i) => s + i.qty * i.price, 0);
+      document.getElementById('cartList').innerHTML = list.map(i => `
+        <div class="flex items-center justify-between py-2.5">
+          <div>
+            <strong class="text-sm">${escapeHtml(i.name)}</strong>
+            <div class="text-xs theme-muted">₹${i.price} × ${i.qty}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button data-mdec="${i.id}" class="w-7 h-7 rounded-lg theme-card-2 border font-bold">-</button>
+            <span class="text-xs font-bold">${i.qty}</span>
+            <button data-madd="${i.id}" class="w-7 h-7 rounded-lg text-white font-bold" style="background: var(--accent);">+</button>
+          </div>
+        </div>
+      `).join('') + `<div class="font-extrabold text-base pt-3">Order Total: ₹${total}</div>`;
+
+      document.querySelectorAll('[data-madd]').forEach(el => el.onclick = () => updateCart(el.dataset.madd, 1));
+      document.querySelectorAll('[data-mdec]').forEach(el => el.onclick = () => updateCart(el.dataset.mdec, -1));
+    }
+
+    document.getElementById('openCartBtn').onclick = () => {
+      renderCartModal();
+      openModal('cartModal');
+    };
+    document.getElementById('closeCartBtn').onclick = () => closeModal('cartModal');
+
+    document.getElementById('submitOrderBtn').onclick = async () => {
+      const items = Object.values(cart);
+      if (!items.length) return;
+      const total = items.reduce((s, i) => s + i.qty * i.price, 0);
+      const btn = document.getElementById('submitOrderBtn');
+      btn.disabled = true;
+      btn.textContent = 'Sending to Kitchen...';
+
+      try {
+        await addDoc(collection(db, 'restaurants', restId, 'orders'), {
+          table_no: String(tableNo),
+          customer_name: document.getElementById('guestName').value.trim() || 'Guest',
+          note: document.getElementById('orderNote').value.trim(),
+          items: items.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
+          total,
+          status: 'NEW',
+          created_ms: Date.now(),
+          created_at: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+        });
+
+        cart = {};
+        document.getElementById('orderNote').value = '';
+        closeModal('cartModal');
+        showToast('Order sent to kitchen!', 'success');
+        renderCustomerMenu();
+      } catch (e) {
+        showToast('Could not send order. Check connection.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Send Order to Kitchen';
+      }
+    };
+
+    async function triggerServiceCall(label) {
+      try {
+        await addDoc(collection(db, 'restaurants', restId, 'orders'), {
+          table_no: String(tableNo),
+          customer_name: 'Table Request',
+          note: label,
+          items: [{ name: `🔔 ${label}`, qty: 1, price: 0 }],
+          total: 0,
+          status: 'NEW',
+          created_ms: Date.now(),
+          created_at: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+        });
+        showToast(`Sent to staff: "${label}" for Table ${tableNo}`, 'success');
+      } catch (e) {
+        showToast('Could not send table alert.', 'error');
+      }
+    }
+
+    // ================= 2. PIN-LOCKED STAFF & MANAGER WORKSPACE =================
+    function renderStaffPinGate() {
+      $hdrTitle.textContent = restaurantData.name;
+      $hdrSub.textContent = 'Staff & Manager Login';
+      $bottomNav.classList.add('hidden');
+      $app.innerHTML = `
+        <div class="max-w-md mx-auto mt-6 theme-card border rounded-3xl p-6 shadow-xl">
+          <h3 class="text-lg font-bold">Enter Role PIN</h3>
+          <p class="text-xs theme-muted mt-1 mb-4">Enter your Manager, Kitchen, or Waiter PIN to unlock.</p>
+          <input id="staffPinInput" type="password" inputmode="numeric" placeholder="4-digit PIN" class="w-full px-4 py-3 rounded-xl theme-card-2 border text-base tracking-widest mb-4 focus:outline-none" />
+          <button id="unlockStaffBtn" class="w-full py-3 rounded-xl font-bold text-sm text-white shadow-lg" style="background: var(--accent);">Unlock Panel</button>
+        </div>
+      `;
+      const unlockFn = () => {
+        const pin = document.getElementById('staffPinInput').value.trim();
+        if (pin === String(restaurantData.manager_pin)) unlockedRole = 'manager';
+        else if (pin === String(restaurantData.kitchen_pin)) unlockedRole = 'kitchen';
+        else if (pin === String(restaurantData.waiter_pin)) unlockedRole = 'waiter';
+        else return showToast('Invalid Role PIN', 'error');
+
+        sessionStorage.setItem(`role_${restId}`, unlockedRole);
+        activeTab = unlockedRole === 'waiter' ? 'tables' : 'queue';
+        renderStaffWorkspace();
+      };
+      document.getElementById('unlockStaffBtn').onclick = unlockFn;
+      document.getElementById('staffPinInput').onkeydown = (e) => { if (e.key === 'Enter') unlockFn(); };
+    }
+
+    function renderStaffWorkspace() {
+      $hdrTitle.textContent = restaurantData.name;
+      $hdrSub.textContent = `Role: ${unlockedRole.toUpperCase()}`;
+      $hdrActions.innerHTML = `<button id="logoutRoleBtn" class="px-3 py-1.5 rounded-xl theme-card-2 border text-xs font-semibold">Switch Role</button>`;
+      document.getElementById('logoutRoleBtn').onclick = () => {
+        sessionStorage.removeItem(`role_${restId}`);
+        unlockedRole = null;
+        renderStaffPinGate();
+      };
+
+      const roleTabs = {
+        kitchen: [
+          { id: 'queue', label: 'Kitchen Queue' },
+          { id: 'history', label: 'Completed' }
+        ],
+        waiter: [
+          { id: 'tables', label: 'Tables & Ready' },
+          { id: 'take_order', label: 'Take Order' }
+        ],
+        manager: [
+          { id: 'queue', label: 'Live Counter' },
+          { id: 'tables', label: 'Tables' },
+          { id: 'menu_mgr', label: 'AI Menu & Stock' },
+          { id: 'qr_mgr', label: 'Table QRs' }
+        ]
+      };
+
+      const tabs = roleTabs[unlockedRole] || roleTabs.kitchen;
+      if (!tabs.some(t => t.id === activeTab)) activeTab = tabs[0].id;
+
+      $bottomNav.classList.remove('hidden');
+      $bottomNavInner.innerHTML = tabs.map(t => `
+        <button data-tab="${t.id}" class="flex-1 py-2 px-2 rounded-xl text-xs font-bold transition ${
+          activeTab === t.id ? 'theme-card-2 border' : 'theme-muted'
+        }">
+          ${t.label}
+        </button>
+      `).join('');
+      $bottomNavInner.querySelectorAll('[data-tab]').forEach(btn => {
+        btn.onclick = () => { activeTab = btn.dataset.tab; renderStaffWorkspace(); };
+      });
+
+      if (activeTab === 'queue') renderLiveQueue(unlockedRole === 'kitchen');
+      if (activeTab === 'history') renderOrderHistory();
+      if (activeTab === 'tables') renderTableFloor();
+      if (activeTab === 'take_order') renderWaiterOrderPad();
+      if (activeTab === 'menu_mgr') renderMenuManager();
+      if (activeTab === 'qr_mgr') renderRestaurantQRTab();
+    }
+
+    function renderLiveQueue(hidePrices) {
+      const openOrders = liveOrders.filter(o => o.status !== 'CLOSED' && o.status !== 'SERVED');
+      const statusPill = {
+        NEW: 'bg-rose-500/20 text-rose-400',
+        PREPARING: 'bg-amber-500/20 text-amber-400',
+        READY: 'bg-emerald-500/20 text-emerald-400'
+      };
+
+      $app.innerHTML = `
+        <h2 class="text-sm font-bold uppercase tracking-wide theme-muted mb-3">Active Orders & Table Requests (${openOrders.length})</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          ${openOrders.map(o => `
+            <div class="theme-card border rounded-2xl p-4 flex flex-col justify-between gap-3">
+              <div>
+                <div class="flex items-center justify-between gap-2">
+                  <strong class="text-base font-bold">Table ${escapeHtml(o.table_no)} ${hidePrices ? '' : `• ₹${o.total}`}</strong>
+                  <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${statusPill[o.status] || statusPill.NEW}">${escapeHtml(o.status)}</span>
+                </div>
+                <div class="text-xs theme-muted mt-1">${escapeHtml(o.created_at || '')} • ${escapeHtml(o.customer_name || 'Guest')}</div>
+                <div class="mt-2.5 space-y-1 text-sm theme-card-2 p-3 rounded-xl">
+                  ${o.items.map(i => `<div><strong class="text-rose-400">${i.qty}×</strong> ${escapeHtml(i.name)}</div>`).join('')}
+                </div>
+                ${o.note ? `<div class="mt-2 text-xs text-amber-400 font-medium">Note: ${escapeHtml(o.note)}</div>` : ''}
+              </div>
+              <div class="flex items-center gap-2 flex-wrap pt-2 border-t" style="border-color: var(--border);">
+                ${o.status === 'NEW' ? `<button data-st="PREPARING" data-oid="${o.id}" class="px-3 py-1.5 rounded-xl bg-amber-600 text-xs font-bold text-white">Start / Acknowledge</button>` : ''}
+                ${o.status !== 'READY' ? `<button data-st="READY" data-oid="${o.id}" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-xs font-bold text-white">Mark Ready / Done</button>` : ''}
+                ${!hidePrices ? `<button data-st="CLOSED" data-oid="${o.id}" class="px-3 py-1.5 rounded-xl theme-card-2 border text-xs font-bold">Settle & Close Table</button>` : ''}
+              </div>
+            </div>
+          `).join('') || '<p class="text-sm theme-muted col-span-full py-6 text-center">No active orders in queue.</p>'}
+        </div>
+      `;
+      $app.querySelectorAll('[data-oid]').forEach(b => {
+        b.onclick = () => updateDoc(doc(db, 'restaurants', restId, 'orders', b.dataset.oid), { status: b.dataset.st });
+      });
+    }
+
+    function renderOrderHistory() {
+      const done = liveOrders.filter(o => o.status === 'READY' || o.status === 'SERVED' || o.status === 'CLOSED').slice(0, 25);
+      $app.innerHTML = `
+        <h2 class="text-sm font-bold uppercase tracking-wide theme-muted mb-3">Recent Completed Orders</h2>
+        <div class="space-y-2.5">
+          ${done.map(o => `
+            <div class="theme-card border rounded-2xl p-3.5">
+              <div class="flex items-center justify-between">
+                <strong class="text-sm font-bold">Table ${escapeHtml(o.table_no)}</strong>
+                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold theme-card-2">${escapeHtml(o.status)}</span>
+              </div>
+              <div class="text-xs theme-muted mt-1">${o.items.map(i => `${i.qty}× ${escapeHtml(i.name)}`).join(', ')}</div>
+            </div>
+          `).join('') || '<p class="text-sm theme-muted py-6 text-center">No history yet.</p>'}
+        </div>
+      `;
+    }
+
+    function renderTableFloor() {
+      const count = Number(restaurantData.table_count || 10);
+      let tiles = '';
+      for (let t = 1; t <= count; t++) {
+        const tOrders = liveOrders.filter(o => String(o.table_no) === String(t) && o.status !== 'CLOSED');
+        const hasReady = tOrders.some(o => o.status === 'READY');
+        const cls = hasReady ? 'border-emerald-500 bg-emerald-500/15' : (tOrders.length ? 'border-amber-500 bg-amber-500/10' : 'theme-card');
+        const label = hasReady ? 'READY / SERVE' : (tOrders.length ? `${tOrders.length} Active` : 'Free');
+        tiles += `
+          <div data-tbl="${t}" class="border rounded-2xl p-4 text-center cursor-pointer transition active:scale-95 ${cls}">
+            <div class="font-bold text-base">Table ${t}</div>
+            <div class="text-xs theme-muted mt-1">${label}</div>
+          </div>
+        `;
+      }
+      $app.innerHTML = `
+        <h2 class="text-sm font-bold uppercase tracking-wide theme-muted mb-3">Floor Overview (Tap Table to Take Order)</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">${tiles}</div>
+      `;
+      $app.querySelectorAll('[data-tbl]').forEach(el => {
+        el.onclick = () => {
+          waiterSelectedTable = el.dataset.tbl;
+          if (unlockedRole === 'waiter') {
+            activeTab = 'take_order';
+            renderStaffWorkspace();
+          } else {
+            showToast(`Selected Table ${waiterSelectedTable}`, 'success');
+          }
+        };
+      });
+    }
+
+    function renderWaiterOrderPad() {
+      const available = menuItems.filter(m => m.in_stock !== false);
+      $app.innerHTML = `
+        <div class="theme-card border rounded-2xl p-4 mb-4 flex items-center justify-between gap-3">
+          <strong class="text-sm font-bold">Manual Order for Table ${escapeHtml(waiterSelectedTable)}</strong>
+          <select id="wTableSel" class="px-3 py-2 rounded-xl theme-card-2 border text-sm">
+            ${Array.from({ length: Number(restaurantData.table_count || 10) }, (_, i) => `
+              <option value="${i + 1}" ${String(i + 1) === String(waiterSelectedTable) ? 'selected' : ''}>Table ${i + 1}</option>
+            `).join('')}
+          </select>
+        </div>
+        <div class="space-y-2.5">
+          ${available.map(m => `
+            <div class="theme-card border rounded-2xl p-3.5 flex items-center justify-between gap-3">
+              <div>
+                <strong class="text-sm">${escapeHtml(m.name)}</strong>
+                <div class="text-xs theme-muted">₹${m.price}</div>
+              </div>
+              <button data-wsend="${m.id}" class="px-3.5 py-2 rounded-xl text-xs font-bold text-white" style="background: var(--accent);">
+                Send 1× to Kitchen
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      document.getElementById('wTableSel').onchange = (e) => { waiterSelectedTable = e.target.value; renderWaiterOrderPad(); };
+      $app.querySelectorAll('[data-wsend]').forEach(b => {
+        b.onclick = async () => {
+          const item = menuItems.find(x => x.id === b.dataset.wsend);
+          if (!item) return;
+          await addDoc(collection(db, 'restaurants', restId, 'orders'), {
+            table_no: String(waiterSelectedTable),
+            customer_name: 'Waiter Order',
+            note: '',
+            items: [{ name: item.name, qty: 1, price: item.price }],
+            total: item.price,
+            status: 'NEW',
+            created_ms: Date.now(),
+            created_at: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+          });
+          showToast(`Sent ${item.name} for Table ${waiterSelectedTable}`, 'success');
+        };
+      });
+    }
+
+    // ================= AI MENU PHOTO SCANNER & 1-TAP 3D DISH STUDIO =================
+    function parseMenuRawText(rawText) {
+      const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const parsed = [];
+      let currentCat = 'Specials';
+
+      for (const line of lines) {
+        const match = line.match(/^([A-Za-z0-9 &()\/'-]+?)\s*(?:[-–:.|₹Rs]+\s*)?(\d{2,4})(?:\s*\/-)?$/i);
+        if (match) {
+          const name = match[1].replace(/[.\-_]+$/g, '').trim();
+          const price = Number(match[2]);
+          if (name.length >= 2 && price > 0) {
+            const media = autoMatchPhotoAndVeg(name);
+            parsed.push({
+              name,
+              price,
+              category: currentCat,
+              veg: media.veg,
+              photo_url: media.photo,
+              glb_url: '' // Clean onboarding: NO fake .glb attached automatically
+            });
+            continue;
+          }
+        }
+        if (!/\d/.test(line) && line.length >= 3 && line.length <= 28) {
+          currentCat = line.replace(/[:\-]+$/g, '').trim();
+        }
+      }
+      return parsed;
+    }
+
+    async function loadTesseractIfNeeded() {
+      if (window.Tesseract) return window.Tesseract;
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      return window.Tesseract;
+    }
+
+    function renderMenuManager() {
+      const todayTotal = liveOrders.reduce((s, o) => s + Number(o.total || 0), 0);
+      const savedKey = localStorage.getItem('smartmenu_gemini_key') || '';
+      const active3DCount = menuItems.filter(m => Boolean(m.glb_url)).length;
+
+      $app.innerHTML = `
+        <div class="theme-card border rounded-2xl p-4 mb-4 flex items-center justify-between">
+          <div>
+            <div class="text-xs theme-muted">Logged Orders Value</div>
+            <strong class="text-xl font-extrabold">₹${todayTotal} <span class="text-xs font-normal theme-muted">(${liveOrders.length} orders)</span></strong>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-sky-500/15 border border-sky-500/40 text-sky-400 text-xs font-bold">
+            🧊 ${active3DCount} 3D Dish${active3DCount === 1 ? '' : 'es'} Active
+          </span>
+        </div>
+
+        <!-- 1-TAP 3D DISH STUDIO (Clean, Honest 3D Onboarding) -->
+        <div class="border-2 border-sky-500/50 bg-sky-500/5 rounded-2xl p-4 mb-4 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <h3 class="text-sm sm:text-base font-extrabold text-sky-400">🧊 1-Tap 3D Dish Studio (Attach Real 3D Models)</h3>
+              <p class="text-xs theme-muted mt-0.5">Pick 3–5 signature dishes from this restaurant and attach a 3D preset or custom <code class="text-sky-300">.glb</code> link.</p>
+            </div>
+          </div>
+
+          ${menuItems.length ? `
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label class="block text-xs font-medium theme-muted mb-1">1. Select Restaurant Dish</label>
+                <select id="studioDishSelect" class="w-full px-3 py-2.5 rounded-xl theme-card-2 border text-sm">
+                  ${menuItems.map(m => `
+                    <option value="${m.id}">${escapeHtml(m.name)} (₹${m.price}) ${m.glb_url ? '• [3D ON]' : ''}</option>
+                  `).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium theme-muted mb-1">2. Choose 3D Preset Model</label>
+                <select id="studioPresetSelect" class="w-full px-3 py-2.5 rounded-xl theme-card-2 border text-sm">
+                  ${PRESET_3D_MODELS.map(p => `
+                    <option value="${escapeHtml(p.url)}">${escapeHtml(p.label)}</option>
+                  `).join('')}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium theme-muted mb-1">Or Paste Custom Restaurant .glb URL (e.g. models/${escapeHtml(restId)}/biryani.glb)</label>
+              <input id="studioCustomGlbInput" type="url" placeholder="https://cdn.jsdelivr.net/gh/byte-standard/RestoQR@main/models/${escapeHtml(restId)}/dish.glb" class="w-full px-3.5 py-2 rounded-xl theme-card-2 border text-xs" />
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap">
+              <button id="attachPreset3DBtn" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-xs font-bold text-white shadow">
+                Attach Selected 3D Model
+              </button>
+              <button id="removeStudio3DBtn" class="px-3.5 py-2 rounded-xl theme-card-2 border text-xs font-semibold">
+                Remove 3D From Dish
+              </button>
+            </div>
+          ` : '<p class="text-xs theme-muted">Scan or add dishes below first, then attach 3D models to their top bestsellers here.</p>'}
+        </div>
+
+        <!-- 1-CLICK AI PHOTO-TO-DIGITAL MENU SCANNER -->
+        <div class="border-2 border-dashed border-blue-500/60 bg-blue-500/5 rounded-2xl p-4 mb-4">
+          <div class="font-extrabold text-sm sm:text-base text-blue-400">✨ AI Menu Photo → Digital Menu (10-Sec Bulk Import)</div>
+          <p class="text-xs theme-muted mt-1 mb-3">
+            Snap a photo of the restaurant's paper/board menu. Extracts every dish, price & category with clean food photos (no fake 3D placeholders).
+          </p>
+
+          <label class="block text-xs font-medium theme-muted mb-1">Optional Gemini API Key (Leave blank for Free Built-in Offline OCR)</label>
+          <input id="aiGeminiKey" type="password" value="${escapeHtml(savedKey)}" placeholder="AIza... (Optional — for ultra-accurate multi-column menus)" class="w-full px-3.5 py-2 rounded-xl theme-card-2 border text-sm mb-3" />
+
+          <div class="flex gap-2 flex-wrap items-center">
+            <input type="file" id="menuPhotoInput" accept="image/*" capture="environment" class="flex-1 text-xs theme-card-2 border rounded-xl p-2" />
+            <button id="scanMenuPhotoBtn" class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white">Scan Photo & Extract</button>
+          </div>
+          <div id="aiScanStatus" class="text-xs theme-muted mt-2"></div>
+
+          <details class="mt-3">
+            <summary class="text-xs theme-muted cursor-pointer font-medium">Or paste raw menu text / WhatsApp menu list</summary>
+            <textarea id="rawMenuPaste" rows="4" placeholder="Starters&#10;Paneer Tikka - 180&#10;Chicken 65 - 210&#10;Main Course&#10;Hyderabadi Dum Biryani - 240" class="w-full px-3.5 py-2 rounded-xl theme-card-2 border text-xs mt-2"></textarea>
+            <button id="parseRawTextBtn" class="mt-1.5 px-3.5 py-1.5 rounded-xl theme-card-2 border text-xs font-semibold">Extract From Text</button>
+          </details>
+
+          <div id="aiPreviewArea" class="mt-3"></div>
+        </div>
+
+        <!-- SINGLE DISH ADD -->
+        <details class="theme-card border rounded-2xl p-4 mb-4">
+          <summary class="font-bold text-sm cursor-pointer">+ Add Single Dish Manually</summary>
+          <div class="mt-3 space-y-2.5">
+            <input id="newDishName" type="text" placeholder="Dish Name (e.g., Paneer Tikka)" class="w-full px-3.5 py-2 rounded-xl theme-card-2 border text-sm" />
+            <input id="newDishDesc" type="text" placeholder="Short Description (e.g., Served with mint chutney)" class="w-full px-3.5 py-2 rounded-xl theme-card-2 border text-sm" />
+            <div class="grid grid-cols-2 gap-2">
+              <input id="newDishCat" type="text" placeholder="Category (Starters)" class="w-full px-3.5 py-2 rounded-xl theme-card-2 border text-sm" />
+              <input id="newDishPrice" type="number" placeholder="Price (180)" class="w-full px-3.5 py-2 rounded-xl theme-card-2 border text-sm" />
+            </div>
+            <input id="newDishPhoto" type="url" placeholder="Photo URL (Leave empty to auto-match food photo)" class="w-full px-3.5 py-2 rounded-xl theme-card-2 border text-sm" />
+            <input id="newDishGlb" type="url" placeholder="Optional 3D .glb Model URL (Leave empty if not a 3D dish)" class="w-full px-3.5 py-2 rounded-xl theme-card-2 border text-sm" />
+            <div class="flex items-center gap-5 text-xs py-1">
+              <label class="inline-flex items-center gap-2"><input type="checkbox" id="newDishVeg" checked /> Veg</label>
+              <label class="inline-flex items-center gap-2"><input type="checkbox" id="newDishBest" /> Bestseller</label>
+            </div>
+            <button id="addDishBtn" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white" style="background: var(--accent);">Save Dish</button>
+          </div>
+        </details>
+
+        <h3 class="text-sm font-bold uppercase tracking-wide theme-muted mb-2.5">Manage Stock & Items (${menuItems.length})</h3>
+        <div class="space-y-2.5">
+          ${menuItems.map(m => `
+            <div class="theme-card border rounded-2xl p-3.5 flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <strong class="text-sm truncate">${escapeHtml(m.name)}</strong>
+                  <span class="text-xs font-bold">• ₹${m.price}</span>
+                  ${m.glb_url ? `<span class="px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/40 text-[10px] font-extrabold">3D</span>` : ''}
+                </div>
+                <div class="text-xs theme-muted mt-0.5">${escapeHtml(m.category)}</div>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                ${m.glb_url ? `<button data-rm3d="${m.id}" class="px-2.5 py-1.5 rounded-xl bg-sky-950/60 border border-sky-500/40 text-sky-300 text-[11px] font-bold">Remove 3D</button>` : ''}
+                <button data-toggle="${m.id}" class="px-3 py-1.5 rounded-xl text-xs font-bold text-white ${m.in_stock !== false ? 'bg-emerald-600' : 'bg-amber-600'}">
+                  ${m.in_stock !== false ? 'In Stock' : 'Sold Out'}
+                </button>
+                <button data-del="${m.id}" class="px-2.5 py-1.5 rounded-xl theme-card-2 border text-xs font-bold">
+                  ${pendingDeleteDishId === m.id ? 'Confirm?' : 'Del'}
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      // Bind 1-Tap 3D Dish Studio buttons
+      if (document.getElementById('attachPreset3DBtn')) {
+        document.getElementById('attachPreset3DBtn').onclick = async () => {
+          const dishId = document.getElementById('studioDishSelect').value;
+          const customUrl = document.getElementById('studioCustomGlbInput').value.trim();
+          const presetUrl = document.getElementById('studioPresetSelect').value;
+          const finalGlb = customUrl || presetUrl;
+          if (!dishId || !finalGlb) return;
+          const dish = menuItems.find(x => x.id === dishId);
+          await updateDoc(doc(db, 'restaurants', restId, 'menu', dishId), {
+            glb_url: finalGlb,
+            bestseller: true
+          });
+          document.getElementById('studioCustomGlbInput').value = '';
+          showToast(`3D model attached to ${dish?.name || 'dish'}!`, 'success');
+        };
+
+        document.getElementById('removeStudio3DBtn').onclick = async () => {
+          const dishId = document.getElementById('studioDishSelect').value;
+          if (!dishId) return;
+          const dish = menuItems.find(x => x.id === dishId);
+          await updateDoc(doc(db, 'restaurants', restId, 'menu', dishId), {
+            glb_url: ''
+          });
+          showToast(`Removed 3D model from ${dish?.name || 'dish'}`, 'warn');
+        };
+      }
+
+      renderAiScannedPreview();
+
+      document.getElementById('parseRawTextBtn').onclick = () => {
+        const txt = document.getElementById('rawMenuPaste').value;
+        aiScannedItems = parseMenuRawText(txt);
+        renderAiScannedPreview();
+      };
+
+      document.getElementById('scanMenuPhotoBtn').onclick = async () => {
+        const file = document.getElementById('menuPhotoInput').files[0];
+        if (!file) return showToast('First snap or choose a menu photo!', 'error');
+        const statusEl = document.getElementById('aiScanStatus');
+        const btn = document.getElementById('scanMenuPhotoBtn');
+        const apiKey = document.getElementById('aiGeminiKey').value.trim();
+        if (apiKey) localStorage.setItem('smartmenu_gemini_key', apiKey);
+
+        btn.disabled = true;
+        try {
+          if (apiKey) {
+            statusEl.textContent = 'Analyzing menu photo with Gemini Vision AI...';
+            const base64 = await new Promise((res, rej) => {
+              const r = new FileReader();
+              r.onload = () => res(r.result.split(',')[1]);
+              r.onerror = rej;
+              r.readAsDataURL(file);
+            });
+            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: 'Extract all food and drink menu items from this image. Return ONLY a raw JSON array of objects with keys: "name" (string), "price" (number), "category" (string), "veg" (boolean), "description" (short string). No markdown fences.' },
+                    { inline_data: { mime_type: file.type || 'image/jpeg', data: base64 } }
+                  ]
+                }]
+              })
+            });
+            const data = await resp.json();
+            const rawJson = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]').replace(/```json|```/g, '').trim();
+            const items = JSON.parse(rawJson);
+            aiScannedItems = items.map(it => {
+              const media = autoMatchPhotoAndVeg(it.name);
+              return {
+                name: it.name,
+                price: Number(it.price || 0),
+                category: it.category || 'Specials',
+                description: it.description || '',
+                veg: typeof it.veg === 'boolean' ? it.veg : media.veg,
+                photo_url: media.photo,
+                glb_url: '' // Clean onboarding: NO fake .glb attached automatically
+              };
+            }).filter(x => x.name && x.price > 0);
+            statusEl.textContent = `Extracted ${aiScannedItems.length} dishes with Gemini AI! Review & publish below.`;
+          } else {
+            statusEl.textContent = 'Scanning menu text with built-in OCR (takes 5–10 sec)...';
+            const Tesseract = await loadTesseractIfNeeded();
+            const result = await Tesseract.recognize(file, 'eng');
+            aiScannedItems = parseMenuRawText(result.data.text || '');
+            statusEl.textContent = `Extracted ${aiScannedItems.length} dishes! Review, edit if needed, and click Publish All.`;
+          }
+          renderAiScannedPreview();
+        } catch (err) {
+          statusEl.textContent = `Scan notice: ${err.message || err}`;
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      document.getElementById('addDishBtn').onclick = async () => {
+        const name = document.getElementById('newDishName').value.trim();
+        const price = Number(document.getElementById('newDishPrice').value || 0);
+        if (!name || !price) return showToast('Enter dish name and price', 'error');
+        const auto = autoMatchPhotoAndVeg(name);
+        const manualGlb = document.getElementById('newDishGlb').value.trim();
+        await addDoc(collection(db, 'restaurants', restId, 'menu'), {
+          name,
+          description: document.getElementById('newDishDesc').value.trim(),
+          category: document.getElementById('newDishCat').value.trim() || 'Specials',
+          price,
+          photo_url: document.getElementById('newDishPhoto').value.trim() || auto.photo,
+          glb_url: manualGlb, // Only attaches 3D if explicitly provided
+          veg: document.getElementById('newDishVeg').checked,
+          bestseller: document.getElementById('newDishBest').checked || Boolean(manualGlb),
+          in_stock: true
+        });
+        showToast(`Saved ${name}`, 'success');
+      };
+
+      $app.querySelectorAll('[data-rm3d]').forEach(b => {
+        b.onclick = async () => {
+          await updateDoc(doc(db, 'restaurants', restId, 'menu', b.dataset.rm3d), { glb_url: '' });
+          showToast('Removed 3D from dish', 'warn');
+        };
+      });
+
+      $app.querySelectorAll('[data-toggle]').forEach(b => {
+        b.onclick = () => {
+          const item = menuItems.find(x => x.id === b.dataset.toggle);
+          updateDoc(doc(db, 'restaurants', restId, 'menu', item.id), { in_stock: item.in_stock === false });
+        };
+      });
+
+      $app.querySelectorAll('[data-del]').forEach(b => {
+        b.onclick = async () => {
+          const id = b.dataset.del;
+          if (pendingDeleteDishId !== id) {
+            pendingDeleteDishId = id;
+            renderMenuManager();
+            setTimeout(() => { if (pendingDeleteDishId === id) { pendingDeleteDishId = null; renderMenuManager(); } }, 3000);
+            return;
+          }
+          pendingDeleteDishId = null;
+          await deleteDoc(doc(db, 'restaurants', restId, 'menu', id));
+          showToast('Dish deleted', 'warn');
+        };
+      });
+    }
+
+    function renderAiScannedPreview() {
+      const box = document.getElementById('aiPreviewArea');
+      if (!box) return;
+      if (!aiScannedItems.length) {
+        box.innerHTML = '';
+        return;
+      }
+      box.innerHTML = `
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <strong class="text-xs sm:text-sm">Review Extracted Menu (${aiScannedItems.length} items)</strong>
+          <button id="publishAllAiBtn" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white">
+            Publish All ${aiScannedItems.length} to Menu
+          </button>
+        </div>
+        <div class="space-y-1.5">
+          ${aiScannedItems.map((it, idx) => `
+            <div class="grid grid-cols-12 gap-1.5 items-center">
+              <input data-ainame="${idx}" value="${escapeHtml(it.name)}" class="col-span-5 px-2.5 py-1.5 rounded-lg theme-card-2 border text-xs" />
+              <input data-aiprice="${idx}" type="number" value="${it.price}" class="col-span-2 px-2 py-1.5 rounded-lg theme-card-2 border text-xs" />
+              <input data-aicat="${idx}" value="${escapeHtml(it.category)}" class="col-span-4 px-2.5 py-1.5 rounded-lg theme-card-2 border text-xs" />
+              <button data-aidel="${idx}" class="col-span-1 py-1.5 rounded-lg theme-card-2 border text-xs font-bold">✕</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      box.querySelectorAll('[data-ainame]').forEach(el => el.oninput = () => { aiScannedItems[el.dataset.ainame].name = el.value; });
+      box.querySelectorAll('[data-aiprice]').forEach(el => el.oninput = () => { aiScannedItems[el.dataset.aiprice].price = Number(el.value || 0); });
+      box.querySelectorAll('[data-aicat]').forEach(el => el.oninput = () => { aiScannedItems[el.dataset.aicat].category = el.value; });
+      box.querySelectorAll('[data-aidel]').forEach(el => el.onclick = () => {
+        aiScannedItems.splice(Number(el.dataset.aidel), 1);
+        renderAiScannedPreview();
+      });
+
+      document.getElementById('publishAllAiBtn').onclick = async () => {
+        const btn = document.getElementById('publishAllAiBtn');
+        btn.disabled = true;
+        btn.textContent = 'Publishing...';
+        for (const it of aiScannedItems) {
+          if (!it.name || !it.price) continue;
+          const auto = autoMatchPhotoAndVeg(it.name);
+          await addDoc(collection(db, 'restaurants', restId, 'menu'), {
+            name: it.name.trim(),
+            description: it.description || '',
+            category: it.category.trim() || 'Specials',
+            price: Number(it.price),
+            veg: it.veg,
+            bestseller: false,
+            in_stock: true,
+            photo_url: it.photo_url || auto.photo,
+            glb_url: '' // Clean publish: attach real 3D models via 1-Tap 3D Dish Studio
+          });
+        }
+        const count = aiScannedItems.length;
+        aiScannedItems = [];
+        showToast(`Published ${count} dishes! Now attach 3D to top items in 3D Dish Studio.`, 'success');
+      };
+    }
+
+    function renderRestaurantQRTab() {
+      const base = `${location.origin}${location.pathname}`;
+      const count = Number(restaurantData.table_count || 10);
+      const staffUrl = `${base}?r=${encodeURIComponent(restId)}&panel=staff`;
+
+      $app.innerHTML = `
+        <div class="theme-card border rounded-2xl p-4 mb-4 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <strong class="text-sm font-bold">Staff Panel Link (Bookmark on Counter Devices)</strong>
+            <div class="flex items-center gap-2">
+              <button id="copyStaffUrlBtn" class="px-3 py-1.5 rounded-xl theme-card-2 border text-xs font-semibold">Copy Link</button>
+              <button onclick="window.print()" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-white" style="background: var(--accent);">Print QRs</button>
+            </div>
+          </div>
+          <div class="text-xs theme-muted break-all theme-card-2 p-2.5 rounded-xl">${escapeHtml(staffUrl)}</div>
+        </div>
+        <div id="printableQrArea" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5"></div>
+      `;
+
+      document.getElementById('copyStaffUrlBtn').onclick = () => {
+        const temp = document.createElement('textarea');
+        temp.value = staffUrl;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        showToast('Staff panel link copied!', 'success');
+      };
+
+      const grid = document.getElementById('printableQrArea');
+      for (let t = 1; t <= count; t++) {
+        const url = `${base}?r=${encodeURIComponent(restId)}&t=${t}`;
+        const box = document.createElement('div');
+        box.className = 'bg-white text-slate-900 rounded-2xl p-3.5 flex flex-col items-center justify-center gap-2 shadow';
+        box.innerHTML = `
+          <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">${escapeHtml(restaurantData.name)}</div>
+          <strong class="text-base font-black text-slate-900">Table ${t}</strong>
+        `;
+        const holder = document.createElement('div');
+        box.appendChild(holder);
+        const hint = document.createElement('div');
+        hint.className = 'text-[10px] font-semibold text-slate-500';
+        hint.textContent = 'Scan for 3D Menu & Order';
+        box.appendChild(hint);
+        grid.appendChild(box);
+        new QRCode(holder, { text: url, width: 115, height: 115 });
+      }
+    }
+
+    // ================= 3. SUPER ADMIN PANEL (ONLY VIA ?panel=superadmin) =================
+    function renderSuperAdminGate() {
+      $hdrTitle.textContent = 'Super Admin Console';
+      $hdrSub.textContent = 'Multi-Restaurant Control';
+      $app.innerHTML = `
+        <div class="max-w-md mx-auto mt-6 theme-card border rounded-3xl p-6 shadow-xl">
+          <h3 class="text-lg font-bold">Super Admin Login</h3>
+          <p class="text-xs theme-muted mt-1 mb-4">Manage all onboarded restaurants, PINs & subscriptions.</p>
+          <input id="saPin" type="password" inputmode="numeric" placeholder="Enter Super Admin PIN" class="w-full px-4 py-3 rounded-xl theme-card-2 border text-base tracking-widest mb-4 focus:outline-none" />
+          <button id="saLoginBtn" class="w-full py-3 rounded-xl font-bold text-sm text-white shadow-lg" style="background: var(--accent);">Open Console</button>
+        </div>
+      `;
+      const loginFn = () => {
+        if (document.getElementById('saPin').value.trim() !== SUPER_ADMIN_PIN) {
+          return showToast('Wrong Super Admin PIN', 'error');
+        }
+        renderSuperAdminDashboard();
+      };
+      document.getElementById('saLoginBtn').onclick = loginFn;
+      document.getElementById('saPin').onkeydown = (e) => { if (e.key === 'Enter') loginFn(); };
+    }
+
+    function renderSuperAdminDashboard() {
+      const base = `${location.origin}${location.pathname}`;
+      onSnapshot(collection(db, 'restaurants'), (snap) => {
+        const clients = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        $app.innerHTML = `
+          <div class="theme-card border rounded-2xl p-4 mb-5 space-y-3">
+            <h3 class="text-sm font-bold">Onboard New Restaurant</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <input id="saSlug" type="text" placeholder="Slug ID (e.g., spice-hub)" class="w-full px-3.5 py-2.5 rounded-xl theme-card-2 border text-sm" />
+              <input id="saName" type="text" placeholder="Restaurant Name" class="w-full px-3.5 py-2.5 rounded-xl theme-card-2 border text-sm" />
+            </div>
+            <div class="grid grid-cols-2 gap-2.5">
+              <input id="saTables" type="number" value="10" placeholder="Tables" class="w-full px-3.5 py-2.5 rounded-xl theme-card-2 border text-sm" />
+              <input id="saColor" type="text" value="#e11d48" placeholder="Hex Color" class="w-full px-3.5 py-2.5 rounded-xl theme-card-2 border text-sm" />
+            </div>
+            <div class="grid grid-cols-3 gap-2.5">
+              <input id="saMgrPin" type="text" value="1111" placeholder="Manager PIN" class="w-full px-3.5 py-2.5 rounded-xl theme-card-2 border text-sm" />
+              <input id="saKitPin" type="text" value="2222" placeholder="Kitchen PIN" class="w-full px-3.5 py-2.5 rounded-xl theme-card-2 border text-sm" />
+              <input id="saWtrPin" type="text" value="3333" placeholder="Waiter PIN" class="w-full px-3.5 py-2.5 rounded-xl theme-card-2 border text-sm" />
+            </div>
+            <input id="saReview" type="url" placeholder="Google Review URL" class="w-full px-3.5 py-2.5 rounded-xl theme-card-2 border text-sm" />
+            <button id="createClientBtn" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow" style="background: var(--accent);">Create Restaurant</button>
+          </div>
+
+          <h3 class="text-sm font-bold uppercase tracking-wide theme-muted mb-3">Onboarded Clients (${clients.length})</h3>
+          <div class="space-y-3">
+            ${clients.map(c => `
+              <div class="theme-card border rounded-2xl p-4">
+                <div class="flex items-center justify-between gap-2">
+                  <div>
+                    <strong class="text-base font-bold">${escapeHtml(c.name)}</strong>
+                    <span class="text-xs theme-muted ml-1">(${escapeHtml(c.id)})</span>
+                  </div>
+                  <button data-cactive="${c.id}" data-cur="${c.active !== false}" class="px-3 py-1 rounded-xl text-xs font-bold text-white ${c.active !== false ? 'bg-emerald-600' : 'bg-amber-600'}">
+                    ${c.active !== false ? 'Active' : 'Suspended'}
+                  </button>
+                </div>
+                <div class="text-xs theme-muted mt-1.5">
+                  Tables: ${c.table_count || 10} • PINs: M:<strong>${escapeHtml(c.manager_pin)}</strong> / K:<strong>${escapeHtml(c.kitchen_pin)}</strong> / W:<strong>${escapeHtml(c.waiter_pin)}</strong>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap mt-3 pt-2.5 border-t" style="border-color: var(--border);">
+                  <a target="_blank" rel="noopener" href="${base}?r=${encodeURIComponent(c.id)}&t=1" class="px-3 py-1.5 rounded-xl theme-card-2 border text-xs font-semibold">Customer Menu</a>
+                  <a target="_blank" rel="noopener" href="${base}?r=${encodeURIComponent(c.id)}&panel=staff" class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white">Staff Panel (AI & 3D Studio)</a>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+        document.getElementById('createClientBtn').onclick = async () => {
+          const id = document.getElementById('saSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+          const name = document.getElementById('saName').value.trim();
+          if (!id || !name) return showToast('Slug ID and Name are required', 'error');
+
+          await setDoc(doc(db, 'restaurants', id), {
+            name,
+            table_count: Number(document.getElementById('saTables').value || 10),
+            accent_color: document.getElementById('saColor').value.trim() || '#e11d48',
+            manager_pin: document.getElementById('saMgrPin').value.trim() || '1111',
+            kitchen_pin: document.getElementById('saKitPin').value.trim() || '2222',
+            waiter_pin: document.getElementById('saWtrPin').value.trim() || '3333',
+            google_review_url: document.getElementById('saReview').value.trim(),
+            active: true
+          });
+
+          showToast(`Created ${name}! Open Staff Panel to scan menu & attach 3D.`, 'success');
+        };
+
+        $app.querySelectorAll('[data-cactive]').forEach(b => {
+          b.onclick = () => {
+            const cur = b.dataset.cur === 'true';
+            updateDoc(doc(db, 'restaurants', b.dataset.cactive), { active: !cur });
+          };
+        });
+      }, showError);
+    }
+
+    boot();
+  </script>
+</body>
+</html>
