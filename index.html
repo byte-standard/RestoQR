@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Smart Menu MVP</title>
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --accent: #e11d48;
+      --bg: #0f1115;
+      --card: #181b22;
+      --card-2: #222630;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #2c313d;
+      --green: #16a34a;
+      --amber: #d97706;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding-bottom: 96px; }
+    header {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(15, 17, 21, 0.92); backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border); padding: 14px 16px;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .brand-title { font-size: 1.1rem; font-weight: 700; }
+    .table-badge {
+      background: var(--card-2); border: 1px solid var(--border);
+      padding: 5px 10px; border-radius: 999px; font-size: 0.8rem; color: var(--muted);
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 16px; }
+    .section-title { font-size: 0.95rem; font-weight: 700; margin: 18px 0 10px; color: #e2e8f0; }
+
+    /* 3D Showcase */
+    .showcase-3d {
+      background: linear-gradient(145deg, #1d222d, #13161c);
+      border: 1px solid var(--border); border-radius: 16px; padding: 14px;
+    }
+    model-viewer {
+      width: 100%; height: 240px; border-radius: 12px;
+      background: #0b0d11; --poster-color: transparent;
+    }
+    .hero-controls {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 12px; gap: 10px; flex-wrap: wrap;
+    }
+    .btn {
+      border: none; border-radius: 10px; padding: 9px 14px;
+      font-weight: 600; font-size: 0.88rem; cursor: pointer; color: #fff;
+      background: var(--accent);
+    }
+    .btn-ghost {
+      background: var(--card-2); color: var(--text); border: 1px solid var(--border);
+    }
+    .btn-sm { padding: 6px 10px; font-size: 0.8rem; border-radius: 8px; }
+
+    /* Filters */
+    .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-top: 10px; }
+    .chip {
+      white-space: nowrap; padding: 7px 13px; border-radius: 999px;
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--muted); font-size: 0.82rem; cursor: pointer;
+    }
+    .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* Menu Grid */
+    .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px;
+    }
+    .card img { width: 100%; height: 140px; object-fit: cover; border-radius: 10px; background: var(--card-2); }
+    .row-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .price { font-weight: 700; font-size: 1rem; color: #fff; }
+    .muted { color: var(--muted); font-size: 0.82rem; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .veg { background: #22c55e; }
+    .nonveg { background: #ef4444; }
+
+    /* Cart Bar & Modal */
+    .cart-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
+      background: #141820; border-top: 1px solid var(--border);
+      padding: 12px 16px; display: none; justify-content: space-between; align-items: center;
+    }
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 50;
+      display: none; align-items: flex-end; justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 18px 18px 0 0; width: 100%; max-width: 600px;
+      padding: 18px; max-height: 85vh; overflow-y: auto;
+    }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; border-radius: 10px;
+      background: var(--card-2); border: 1px solid var(--border);
+      color: var(--text); font-size: 0.9rem; margin-top: 6px; margin-bottom: 12px;
+    }
+
+    /* Counter Orders */
+    .order-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px; margin-bottom: 12px;
+    }
+    .status-pill {
+      padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700;
+      background: rgba(217, 119, 6, 0.2); color: #fbbf24;
+    }
+    .status-pill.SERVED { background: rgba(22, 163, 74, 0.2); color: #4ade80; }
+
+    /* QR Grid */
+    .qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-top: 14px; }
+    .qr-box {
+      background: #fff; color: #111; border-radius: 12px; padding: 12px;
+      text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="brand-title" id="headerTitle">Loading Menu...</div>
+      <div class="muted" id="headerSub">Smart Dining</div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <span class="table-badge" id="tableBadge">Table 1</span>
+      <button class="btn btn-ghost btn-sm" onclick="switchView('menu')">Menu</button>
+      <button class="btn btn-ghost btn-sm" onclick="switchView('counter')">Counter</button>
+      <button class="btn btn-ghost btn-sm" onclick="switchView('qr')">QR Gen</button>
+    </div>
+  </header>
+
+  <div class="container" id="appRoot"></div>
+
+  <div class="cart-bar" id="cartBar">
+    <div>
+      <div id="cartSummary" style="font-weight:700;">0 items • ₹0</div>
+      <div class="muted">Tap review to place order</div>
+    </div>
+    <button class="btn" onclick="openCartModal()">View Order</button>
+  </div>
+
+  <div class="modal-backdrop" id="cartModal">
+    <div class="modal">
+      <div class="row-between" style="margin-bottom:12px;">
+        <h3>Your Order</h3>
+        <button class="btn btn-ghost btn-sm" onclick="closeCartModal()">Close</button>
+      </div>
+      <div id="cartItemsList"></div>
+      <label class="muted">Your Name (Optional)</label>
+      <input id="custName" placeholder="e.g., Rahul" />
+      <label class="muted">Kitchen Note (Optional)</label>
+      <textarea id="custNote" rows="2" placeholder="Less spicy, no onion..."></textarea>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn" style="flex:1;" id="placeOrderBtn" onclick="submitOrder(false)">Send Order to Counter</button>
+        <button class="btn btn-ghost" style="flex:1;" onclick="submitOrder(true)">Send via WhatsApp</button>
+      </div>
+      <div id="postOrderBox" style="display:none; margin-top:14px; padding:12px; background:var(--card-2); border-radius:12px;"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'YOUR_APPS_SCRIPT_WEB_APP_URL';
+    const params = new URLSearchParams(location.search);
+    let currentRestaurantId = params.get('r') || 'demo-cafe';
+    let tableNo = params.get('t') || '1';
+    let currentView = params.get('view') || 'menu';
+
+    let restaurant = { name: 'Smart Menu', accent_color: '#e11d48', whatsapp_number: '', google_review_url: '' };
+    let menuItems = [];
+    let hero3DItems = [];
+    let activeHeroIdx = 0;
+    let selectedCategory = 'All';
+    let vegOnly = false;
+    let cart = {};
+    let pollTimer = null;
+    let lastOrderCount = 0;
+
+    document.getElementById('tableBadge').textContent = `Table ${tableNo}`;
+
+    function setAccent(color) {
+      if (color) document.documentElement.style.setProperty('--accent', color);
+    }
+
+    function switchView(view) {
+      currentView = view;
+      clearInterval(pollTimer);
+      document.getElementById('cartBar').style.display = 'none';
+      if (view === 'menu') {
+        loadMenu();
+      } else if (view === 'counter') {
+        renderCounterShell();
+        fetchOrders(true);
+        pollTimer = setInterval(() => fetchOrders(false), 6000);
+      } else if (view === 'qr') {
+        renderQRGenerator();
+      }
+    }
+
+    async function loadMenu() {
+      const cacheKey = `menu_cache_${currentRestaurantId}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        restaurant = parsed.restaurant;
+        menuItems = parsed.menu;
+        setAccent(restaurant.accent_color);
+        renderMenuView();
+      } else {
+        document.getElementById('appRoot').innerHTML = '<p class="muted">Loading menu...</p>';
+      }
+
+      try {
+        const res = await fetch(`${API_URL}?action=init&r=${encodeURIComponent(currentRestaurantId)}`);
+        const data = await res.json();
+        if (data.ok) {
+          restaurant = data.restaurant;
+          menuItems = data.menu;
+          localStorage.setItem(cacheKey, JSON.stringify({ restaurant, menu: menuItems }));
+          setAccent(restaurant.accent_color);
+          if (currentView === 'menu') renderMenuView();
+        }
+      } catch (e) {
+        if (!cached) document.getElementById('appRoot').innerHTML = '<p class="muted">Could not load menu. Check connection.</p>';
+      }
+    }
+
+    function renderMenuView() {
+      document.getElementById('headerTitle').textContent = restaurant.name;
+      document.getElementById('headerSub').textContent = 'Interactive 3D & Instant Ordering';
+      hero3DItems = menuItems.filter(i => i.bestseller && i.glb_url);
+      if (activeHeroIdx >= hero3DItems.length) activeHeroIdx = 0;
+
+      const categories = ['All', ...new Set(menuItems.map(i => i.category).filter(Boolean))];
+      const currentHero = hero3DItems[activeHeroIdx];
+
+      const heroHtml = currentHero ? `
+        <div class="section-title">3D Signature Showcase (Drag to Rotate)</div>
+        <div class="showcase-3d">
+          <model-viewer
+            src="${currentHero.glb_url}"
+            alt="${currentHero.name}"
+            camera-controls
+            auto-rotate
+            shadow-intensity="1"
+            ar
+          ></model-viewer>
+          <div class="hero-controls">
+            <div>
+              <div style="font-weight:700;">${currentHero.name} • ₹${currentHero.price}</div>
+              <div class="muted">${currentHero.category}</div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              ${hero3DItems.length > 1 ? `<button class="btn btn-ghost btn-sm" onclick="cycleHero()">Next 3D Dish</button>` : ''}
+              <button class="btn btn-sm" onclick="addToCart('${currentHero.id}')">+ Add</button>
+            </div>
+          </div>
+        </div>
+      ` : '';
+
+      const filtered = menuItems.filter(item => {
+        const catOk = selectedCategory === 'All' || item.category === selectedCategory;
+        const vegOk = !vegOnly || item.veg;
+        return catOk && vegOk;
+      });
+
+      const cardsHtml = filtered.map(item => {
+        const qty = cart[item.id]?.qty || 0;
+        return `
+          <div class="card">
+            <div>
+              ${item.photo_url ? `<img src="${item.photo_url}" alt="${item.name}" loading="lazy" />` : ''}
+              <div class="row-between" style="margin-top:8px;">
+                <span class="dot ${item.veg ? 'veg' : 'nonveg'}"></span>
+                <span class="muted">${item.category}</span>
+              </div>
+              <div style="font-weight:700; margin-top:4px;">${item.name}</div>
+            </div>
+            <div class="row-between">
+              <span class="price">₹${item.price}</span>
+              ${qty === 0
+                ? `<button class="btn btn-sm" onclick="addToCart('${item.id}')">+ Add</button>`
+                : `<div style="display:flex; gap:6px; align-items:center;">
+                     <button class="btn btn-ghost btn-sm" onclick="changeQty('${item.id}', -1)">-</button>
+                     <span style="font-weight:700;">${qty}</span>
+                     <button class="btn btn-sm" onclick="changeQty('${item.id}', 1)">+</button>
+                   </div>`
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('appRoot').innerHTML = `
+        ${heroHtml}
+        <div class="section-title">Full Menu</div>
+        <div class="filters">
+          <button class="chip ${vegOnly ? 'active' : ''}" onclick="toggleVeg()">Veg Only</button>
+          ${categories.map(c => `
+            <button class="chip ${selectedCategory === c ? 'active' : ''}" onclick="selectCat('${c.replace(/'/g, "\\'")}')">${c}</button>
+          `).join('')}
+        </div>
+        <div class="menu-grid">${cardsHtml || '<p class="muted">No items match filter.</p>'}</div>
+      `;
+      updateCartBar();
+    }
+
+    function cycleHero() {
+      if (!hero3DItems.length) return;
+      activeHeroIdx = (activeHeroIdx + 1) % hero3DItems.length;
+      renderMenuView();
+    }
+
+    function selectCat(cat) {
+      selectedCategory = cat;
+      renderMenuView();
+    }
+
+    function toggleVeg() {
+      vegOnly = !vegOnly;
+      renderMenuView();
+    }
+
+    function addToCart(id) {
+      const item = menuItems.find(m => m.id === id);
+      if (!item) return;
+      if (!cart[id]) cart[id] = { ...item, qty: 0 };
+      cart[id].qty += 1;
+      renderMenuView();
+    }
+
+    function changeQty(id, delta) {
+      if (!cart[id]) return;
+      cart[id].qty += delta;
+      if (cart[id].qty <= 0) delete cart[id];
+      renderMenuView();
+      if (document.getElementById('cartModal').classList.contains('open')) renderCartModalBody();
+    }
+
+    function updateCartBar() {
+      const list = Object.values(cart);
+      const count = list.reduce((s, i) => s + i.qty, 0);
+      const total = list.reduce((s, i) => s + i.qty * i.price, 0);
+      const bar = document.getElementById('cartBar');
+      if (count > 0 && currentView === 'menu') {
+        bar.style.display = 'flex';
+        document.getElementById('cartSummary').textContent = `${count} items • ₹${total}`;
+      } else {
+        bar.style.display = 'none';
+      }
+    }
+
+    function openCartModal() {
+      document.getElementById('postOrderBox').style.display = 'none';
+      renderCartModalBody();
+      document.getElementById('cartModal').classList.add('open');
+    }
+
+    function closeCartModal() {
+      document.getElementById('cartModal').classList.remove('open');
+    }
+
+    function renderCartModalBody() {
+      const list = Object.values(cart);
+      const total = list.reduce((s, i) => s + i.qty * i.price, 0);
+      document.getElementById('cartItemsList').innerHTML = list.map(i => `
+        <div class="row-between" style="padding:8px 0; border-bottom:1px solid var(--border);">
+          <div>
+            <div style="font-weight:600;">${i.name}</div>
+            <div class="muted">₹${i.price} × ${i.qty} = ₹${i.price * i.qty}</div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-ghost btn-sm" onclick="changeQty('${i.id}', -1)">-</button>
+            <button class="btn btn-sm" onclick="changeQty('${i.id}', 1)">+</button>
+          </div>
+        </div>
+      `).join('') + `<div style="font-weight:700; margin-top:10px;">Total: ₹${total}</div>`;
+    }
+
+    async function submitOrder(viaWhatsApp) {
+      const items = Object.values(cart);
+      if (!items.length) return;
+      const total = items.reduce((s, i) => s + i.qty * i.price, 0);
+      const note = document.getElementById('custNote').value.trim();
+      const customerName = document.getElementById('custName').value.trim() || 'Guest';
+
+      if (viaWhatsApp && restaurant.whatsapp_number) {
+        const lines = items.map(i => `• ${i.name} x${i.qty} (₹${i.price * i.qty})`).join('%0A');
+        const msg = `*New Order - ${restaurant.name}*%0ATable: ${tableNo}%0AGuest: ${customerName}%0A${lines}%0A*Total: ₹${total}*${note ? `%0ANote: ${note}` : ''}`;
+        window.open(`https://wa.me/${restaurant.whatsapp_number}?text=${msg}`, '_blank');
+      }
+
+      const btn = document.getElementById('placeOrderBtn');
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'place_order',
+            r: currentRestaurantId,
+            table_no: tableNo,
+            items: items.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
+            total,
+            note,
+            customer_name: customerName
+          })
+        });
+        const data = await res.json();
+        cart = {};
+        renderMenuView();
+
+        const reviewBtn = restaurant.google_review_url
+          ? `<a class="btn btn-sm" style="display:inline-block; margin-top:8px; text-decoration:none;" target="_blank" href="${restaurant.google_review_url}">Rate Us on Google</a>`
+          : '';
+
+        document.getElementById('postOrderBox').style.display = 'block';
+        document.getElementById('postOrderBox').innerHTML = `
+          <div style="font-weight:700; color:#4ade80;">Order Sent! ID: ${data.order_id || 'Saved'}</div>
+          <div class="muted">Table ${tableNo} order received by counter.</div>
+          ${reviewBtn}
+        `;
+      } catch (e) {
+        alert('Could not log order online. Try WhatsApp button.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Send Order to Counter';
+      }
+    }
+
+    function playChime() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        osc.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.18);
+      } catch (e) {}
+    }
+
+    function renderCounterShell() {
+      document.getElementById('headerTitle').textContent = `${currentRestaurantId} • Counter`;
+      document.getElementById('headerSub').textContent = 'Live Table Orders';
+      document.getElementById('appRoot').innerHTML = `
+        <div class="row-between" style="margin-bottom:12px;">
+          <div class="section-title" style="margin:0;">Incoming Orders</div>
+          <button class="btn btn-ghost btn-sm" onclick="fetchOrders(true)">Refresh</button>
+        </div>
+        <div id="ordersList"><p class="muted">Loading orders...</p></div>
+      `;
+    }
+
+    async function fetchOrders(manual) {
+      try {
+        const res = await fetch(`${API_URL}?action=orders&r=${encodeURIComponent(currentRestaurantId)}`);
+        const data = await res.json();
+        if (!data.ok) return;
+        if (!manual && data.orders.length > lastOrderCount && lastOrderCount > 0) playChime();
+        lastOrderCount = data.orders.length;
+
+        document.getElementById('ordersList').innerHTML = data.orders.map(o => {
+          let parsedItems = [];
+          try { parsedItems = JSON.parse(o.items_json || '[]'); } catch (e) {}
+          const itemsStr = parsedItems.map(i => `${i.name} ×${i.qty}`).join(', ');
+          return `
+            <div class="order-card">
+              <div class="row-between">
+                <strong>Table ${o.table_no} • ₹${o.total}</strong>
+                <span class="status-pill ${o.status}">${o.status}</span>
+              </div>
+              <div class="muted" style="margin-top:4px;">${o.order_id} • ${o.created_at}</div>
+              <div style="margin-top:8px;">${itemsStr}</div>
+              ${o.note ? `<div class="muted" style="margin-top:4px;">Note: ${o.note}</div>` : ''}
+              <div style="display:flex; gap:8px; margin-top:10px;">
+                <button class="btn btn-ghost btn-sm" onclick="setOrderStatus('${o.order_id}'
